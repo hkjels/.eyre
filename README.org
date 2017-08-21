@@ -1,0 +1,22 @@
+#+TITLE: Eyre
+#+AUTHOR: Henrik Kjerringvåg
+#+OPTIONS: toc:nil num:nil author:nil date:nil
+#+LANGUAGE: en
+
+* Installation
+  
+Pop open a command-line and execute the following:
+
+#+BEGIN_SRC shell :exports both
+git clone https://github.com/hkjels/Eyre && cd Eyre
+echo '(org-babel-load-file "$(pwd)/Eyre.org")' >> ~/.emacs
+#+END_SRC
+
+
+* Usage
+
+All you need to know is documented in the configuration
+itself. To get up and running quickly, I'd recommend you export the
+cheatsheet tag and hit print.
+
+/Hint ~<C>-c <C>-e/ P p~ 

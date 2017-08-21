@@ -1,0 +1,901 @@
+#+TITLE:		 Eyre
+#+AUTHOR:		 Henrik Kjerringvåg
+#+EMAIL:		 henrik@kjerringvåg.no
+#+STARTUP:		 overview noindent
+#+SEQ_TODO:		 TODO(t) INPROGRESS(i) REVIEW(r@) | DONE(d) CANCELED(c@)
+#+TAGS:			 cheatsheet(c) noexport(n)
+#+OPTIONS:		 toc:nil num:nil author:nil date:nil
+#+EXPORT_EXCLUDE_TAGS:	 noexport
+#+LANGUAGE:		 en
+
+#+BEGIN_QUOTE
+I am no bird; and no net ensnares me; I am a free human being with
+an independent will
+-- Jane Eyre
+#+END_QUOTE
+
+\newpage
+
+* Introduction
+  
+OK, so with the obligatory hipster-quote out of the way, we can get
+down to business. With Eyre, I'm trying to make my configuration as
+immidiately obvious as possible. As you might quickly see, it's geared
+towards functional and literate programming first and foremost, but
+can easily be tweaked to whatever your liking.
+It's worth mentioning though that this is primarily my own
+configuration and not a layered solution that you can update without
+breakage.
+  
+  
+* Package Management
+  
+First we make sure that packages can be loaded and that only
+trustworthy packages gets installed.
+  
+#+BEGIN_SRC emacs-lisp
+(require 'package)
+(setq tls-checktrust t)
+(setq package-enable-at-startup nil)
+(package-initialize)
+#+END_SRC
+  
+In order to retrieve packages, Eyre needs to know where to look. Below
+you can see all of the repositories that ~Eyre~ will scour.
+  
+#+name: repos
+| Repository   | URL                                 |
+|--------------+-------------------------------------|
+| melpa        | http://melpa.org/packages/          |
+| melpa-stable | http://stable.melpa.org/packages/   |
+| marmalade    | http://marmalade-repo.org/packages/ |
+  
+#+BEGIN_SRC emacs-lisp :var repos=repos
+(dolist (repo (cdr repos))
+  (when (listp repo)
+    (add-to-list 'package-archives (cons (car repo) (cadr repo)))))
+#+END_SRC
+  
+We'll use [[https://github.com/jwiegley/use-package][use-package]] ~use-package~ to manage our packages and how their loaded.
+  
+#+BEGIN_SRC emacs-lisp
+(unless (package-installed-p 'use-package)
+  (package-refresh-contents)
+  (package-install 'use-package))
+
+(require 'use-package)
+#+END_SRC
+  
+  
+* Configuration Helpers
+  
+#+BEGIN_SRC emacs-lisp
+(fset 'yes-or-no-p 'y-or-n-p)
+#+END_SRC  
+ 
+#+BEGIN_SRC emacs-lisp
+(defun kill-other-buffers ()
+  "Kill all other buffers than the current."
+  (interactive)
+  (mapc 'kill-buffer
+	(delq (current-buffer)
+	      (remove-if-not 'buffer-file-name (buffer-list)))))
+
+(defun sudo-edit (&optional arg)
+  "Edit currently visited file as root.
+
+   With a prefix ARG prompt for a file to visit.
+   Will also prompt for a file to visit if current
+   buffer is not visiting a file."
+  (interactive "P")
+  (let ((cursor-position (point)))
+    (if (or arg (not buffer-file-name))
+	(find-file (concat "/sudo:root@localhost:"
+			   (ido-read-file-name "Find file(as root): ")))
+      (find-alternate-file (concat "/sudo:root@localhost:" buffer-file-name)))
+    (goto-char cursor-position)))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package command-log-mode
+  :ensure t
+  :commands command-log-mode)
+#+END_SRC
+
+Greately improve performance by tweaking garbage-collection
+
+#+BEGIN_SRC emacs-lisp
+(setq gc-cons-threshold (* 4 1024 1024))
+(setq gc-cons-percentage 0.3)
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package benchmark-init
+  :ensure t
+  :if (getenv "EMACS_BENCHMARK")
+  :config (benchmark-init/activate))
+#+END_SRC  
+  
+Macrostep is a handy little package that lets you expand elisp-macros.
+  
+#+BEGIN_SRC emacs-lisp
+(use-package macrostep
+  :ensure t
+  :bind (("C-c e" . macrostep-expand)))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package async
+  :ensure t
+  :config
+  (setq async-bytecomp-allowed-packages '(all))
+  :init
+  (progn (dired-async-mode 1)
+         (async-bytecomp-package-mode 1)))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(defun add-hook-to-modes (modes hook)
+  (dolist (mode modes)
+    (add-hook (intern (concat (symbol-name mode) "-mode-hook"))
+	      hook)))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(setq lisp-modes '(clojure
+		   lisp
+		   list-interaction
+		   emacs-lisp))
+#+END_SRC
+  
+Paths
+#+BEGIN_SRC emacs-lisp
+(defconst src-file (expand-file-name "~/.eyre/Eyre.org"))
+(defconst conf-dir (file-name-directory load-file-name))
+(defconst savefile-dir (expand-file-name "savefile-dir" conf-dir))
+(defconst backup-dir (expand-file-name "backup" conf-dir))
+(setq backup-directory-alist `((".*" . , backup-dir))
+      create-lockfiles nil
+      auto-save-file-name-transforms `((".*" ,backup-dir t))
+      auto-save-list-file-prefix backup-dir)
+#+END_SRC  
+
+#+BEGIN_SRC emacs-lisp
+(prefer-coding-system 'utf-8)
+(set-language-environment "UTF-8")
+(setq locale-coding-system 'utf-8)
+(set-selection-coding-system 'utf-8)
+(setq-default buffer-file-coding-system 'utf-8-unix)
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(defun find-configurations-file ()
+  "Find Eyre's configuration-file."
+  (interactive)
+  (find-file src-file))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(defun kill-term-buffer ()
+  "Kill terminal-buffer upon quitting"
+  (let* ((buff (current-buffer))
+         (proc (get-buffer-process buff)))
+    (set-process-sentinel
+     proc
+     `(lambda (process event)
+        (if (string= event "finished\n")
+            (kill-buffer ,buff))))))
+
+(add-hook 'term-exec-hook 'kill-term-buffer)
+#+END_SRC
+  
+  
+* Startup
+  
+#+BEGIN_SRC emacs-lisp
+(setq inhibit-startup-screen t
+      inhibit-startup-message t
+      initial-scratch-message ""
+      initial-major-mode 'org-mode
+      inhibit-startup-echo-area-message t)
+#+END_SRC
+  
+By running ~emacs~ as a server, we can throw stuff at it from an
+external command-line by executing ~emacsclient "path"~.
+  
+#+BEGIN_SRC emacs-lisp
+(use-package server
+  :if window-system
+  :init (add-hook 'after-init-hook 'server-start t))
+#+END_SRC
+  
+Eyre boots directly into the agenda-view, so you can quickly jump to
+the task of the day. Getting comfortable with setting up an agenda can
+really make you more productive.
+  
+#+BEGIN_SRC emacs-lisp
+(defun agenda ()
+  (interactive)
+  (org-agenda-list)
+  (delete-other-windows))
+
+(add-hook 'after-init-hook 'agenda)
+#+END_SRC
+  
+  
+* Menues
+  
+** Prefix-commands
+   
+#+BEGIN_SRC emacs-lisp
+(define-prefix-command 'REPL)
+(define-prefix-command 'buffers)
+(define-prefix-command 'files)
+(define-prefix-command 'git)
+(define-prefix-command 'history)
+(define-prefix-command 'projects)
+(define-prefix-command 'toggle)
+(define-prefix-command 'window)
+#+END_SRC
+   
+** Aliases
+   
+Below is a list of aliases that makes it arguably easier to grok the
+commands true purpose.
+/Note that only commands without arguments will be possible to alias this way/
+
+#+NAME: aliases
+| alias                     | original                        |
+|---------------------------+---------------------------------|
+| buffers/kill              | kill-buffer                     |
+| buffers/previous          | switch-to-prev-buffer           |
+| buffers/list              | helm-mini                       |
+| projects/find-file        | projectile-find-file            |
+| projects/search           | helm-projectile-ag              |
+| projects/switch           | projectile-persp-switch-project |
+| window/kill               | persp-kill                      |
+| window/rename             | persp-rename                    |
+| window/switch             | persp-switch                    |
+| window/switch-to-last     | persp-switch-last               |
+| window/zoom               | text-scale-adjust               |
+| window/split-vertically   | split-window-right              |
+| window/split-horizontally | split-window-below              |
+| toggle/fullscreen         | toggle-frame-fullscreen         |
+| git/status                | magit-status                    |
+| git/init                  | magit-init                      |
+| git/log                   | magit-log-popup                 |
+| git/diff                  | magit-diff-popup                |
+| git/checkout              | magit-checkout                  |
+| git/blame                 | magit-blame-mode                |
+
+Massage the table above into usable commands
+#+BEGIN_SRC emacs-lisp :var aliases=aliases
+(dolist (als (cdr aliases))
+  (when (listp als)
+    (defalias (intern (car als)) (intern (cadr als)))))
+#+END_SRC
+
+Some additional aliases that are interactive
+#+BEGIN_SRC emacs-lisp
+(defun terminal ()
+  (interactive)
+  (ansi-term "/usr/local/bin/bash"))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(defun buffers/scratch ()
+  "Switch to and/or create a new scratch-buffer."
+  (interactive)
+  (switch-to-buffer-other-window (get-buffer-create "*scratch*")))
+#+END_SRC
+
+
+* Bindings							      :cheatsheet:
+  
+#+BEGIN_SRC emacs-lisp
+(use-package general
+  :ensure t
+  :config
+  (setq general-default-keymaps 'evil-normal-state-map)
+  (general-define-key :prefix "SPC"
+                      "SPC" 'avy-goto-char-2
+		      "'"  'terminal
+		      "a"  'agenda
+		      "b"  'buffers
+		      "bp" 'buffers/previous
+		      "bb" 'buffers/list
+		      "bk" 'buffers/kill
+		      "bs" 'buffers/scratch
+		      "f"  'files
+		      "ff" 'helm-find-files
+		      "fc" 'find-configurations-file
+		      "fs" 'sudo-edit
+		      "g"  'git
+		      "gb" 'git/blame
+		      "gi" 'git/init
+		      "gl" 'git/log
+		      "gs" 'git/status
+		      "gd" 'git/diff
+		      "gc" 'git/checkout
+		      "h"  'history
+		      "hu" 'undo-tree-visualize
+		      "hk" 'helm-show-kill-ring
+		      "r"  'REPL
+		      "p"  'projects
+		      "p/" 'projects/search
+		      "pf" 'projects/find-file
+		      "ps" 'projects/switch
+		      "tf" 'toggle/fullscreen
+		      "w"  'window
+		      "ws" 'window/switch
+		      "wr" 'window/rename
+		      "wl" 'window/switch-to-last
+		      "wk" 'window/kill
+		      "wz" 'window/zoom
+		      "w|" 'window/split-vertically
+		      "w-" 'window/split-horizontally)
+  :init
+  (general-evil-setup t))
+#+END_SRC
+  
+What was that binding again? Well, guide-key will tell you as long as
+you keep the top-level key in mind.
+  
+#+BEGIN_SRC emacs-lisp
+(use-package guide-key
+  :ensure t
+  :diminish guide-key-mode
+  :config
+  (setq guide-key/guide-key-sequence '("<SPC>" "C-c" "M-g" "C-x")
+	guide-key/recursive-key-sequence-flag t
+	guide-key/idle-delay 0.3
+	guide-key/popup-window-position 'bottom)
+  :init
+  (guide-key-mode 1))
+#+END_SRC
+  
+  
+* Projects
+  
+#+BEGIN_SRC emacs-lisp
+(use-package dumb-jump
+  :ensure t
+  :commands (dumb-jump-mode dumb-jump-go)
+  :bind (("C-<tab>" . dumb-jump-go)
+	 ("C-S-<tab>" . dumb-jump-back)))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package projectile
+  :ensure t
+  :diminish projectile-mode
+  :config
+  (setq projectile-completion-system 'helm)
+  :init
+  (projectile-global-mode))
+
+(use-package perspective
+  :ensure t
+  :config
+  (persp-mode t)
+  (use-package persp-projectile
+    :ensure t))
+
+(use-package helm
+  :ensure t
+  :bind
+  (("M-x" . helm-M-x))
+  :config
+  (setq helm-quick-update t
+	helm-M-x-fuzzy-match t
+	helm-mode-fuzzy-match t
+	helm-apropos-fuzzy-match t
+	helm-buffers-fuzzy-matching t
+	helm-recentf-fuzzy-match t))
+
+(use-package helm-projectile
+  :ensure t
+  :commands (helm-projectile-switch-project
+	     helm-projectile-find-file)
+  :init
+  (helm-projectile-on))
+
+(use-package ag
+  :ensure t)
+
+(use-package helm-ag
+  :ensure t
+  :after ag
+  :commands (helm-ag
+	     helm-ag-this-file))
+
+(use-package avy
+  :ensure t
+  :bind
+  (("M-g l" . avy-goto-line)
+   ("M-g c" . avy-goto-char-2)))
+#+END_SRC
+  
+  
+* Efficient Editing
+  
+#+BEGIN_SRC emacs-lisp
+(use-package editorconfig
+  :ensure t)
+#+END_SRC
+  
+Evil introduces modal-bindings to emacs, similar to that of vim. As a
+longtime vim-user, I must say it's like editing super-powers that I
+can not leave behind.
+  
+#+BEGIN_SRC emacs-lisp
+(use-package evil
+  :ensure t
+  :config
+  (use-package evil-visualstar
+    :ensure t
+    :commands (evil-visualstar/begin-search-forward
+	       evil-visualstar/begin-search-backward)
+    :bind
+    (:map evil-visual-state-map
+	  ([(?*)] . evil-visualstar/begin-search-forward)
+	  ([(?#)] . evil-visualstar/begin-search-backward)))
+  (use-package evil-iedit-state
+    :ensure t)
+  (use-package evil-exchange
+    :ensure t)
+  (use-package evil-surround
+    :ensure t
+    :init
+    (global-evil-surround-mode 1))
+  :init
+  (evil-mode 1))
+#+END_SRC
+  
+  
+#+BEGIN_SRC emacs-lisp
+(use-package key-chord
+  :ensure t
+  :config
+  (setq key-chord-two-keys-delay 0.05))
+
+(use-package use-package-chords
+  :ensure t
+  :after key-chord
+  :init
+  (key-chord-mode 1))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package yasnippet
+  :ensure t
+  :diminish  yas-minor-mode
+  :config
+  (yas/load-directory "~/.eyre/snippets")
+  :init
+  (yas-global-mode t))
+#+END_SRC
+  
+  
+* Version Control
+  
+Without this property set to true, you would most likely jump of a
+cliff. It simply loads whatever changes that happens to files outside
+of emacs. Usually happens when you switch branch etc.
+  
+#+BEGIN_SRC emacs-lisp
+(global-auto-revert-mode t)
+#+END_SRC
+  
+[[https://magit.vc/][Magit]] is pretty much the de-facto interface for git in Emacs and for
+good reasons. I've set it up so it suits my vim-mussles a little better.
+#+BEGIN_SRC emacs-lisp
+(use-package magit
+  :ensure t
+  :commands (magit-blame-mode
+	     magit-diff-popup
+	     magit-log-popup
+	     magit-statu)
+  :config
+  (general-define-key :prefix "SPC"))
+
+(use-package magithub
+  :ensure t
+  :after magit
+  :config (magithub-feature-autoinject t))
+
+(use-package evil-magit
+  :ensure t
+  :after magit)
+#+END_SRC
+  
+With [[https://github.com/syohex/emacs-git-gutter-fringe][git-gutter-fringe]] we can show changes to the current buffer in a
+fringe on the left-side of the screen.
+#+BEGIN_SRC emacs-lisp
+(use-package fringe-helper :ensure t)
+
+(use-package git-gutter-fringe
+  :ensure t
+  :diminish git-gutter-mode
+  :after fringe-helper
+  :init
+  (add-hook 'prog-mode-hook 'git-gutter-mode))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package darcsum
+  :ensure t)
+#+END_SRC
+  
+
+* Database
+#+BEGIN_SRC emacs-lisp
+(use-package edbi
+  :ensure t)
+#+END_SRC
+
+* Aestetics
+  
+#+BEGIN_SRC emacs-lisp
+(setq-default line-spacing 12
+	      linum-relative-current-symbol "")
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package all-the-icons
+  :ensure t)
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package material-theme
+  :ensure t
+  :init
+  (load-theme 'material :no-confirm))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(add-to-list 'custom-theme-load-path "~/.emacs.d/themes")
+;(load-theme 'challenger-deep t)
+#+END_SRC
+  
+I like using a GUI-version of Emacs, but I firmly dislike the amount
+of chrome, this pretty much disables all of it for MacOS.
+  
+#+BEGIN_SRC emacs-lisp
+(scroll-bar-mode -1)
+(tool-bar-mode -1)
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(show-paren-mode t)
+(set-frame-font "Fira Code")
+
+(use-package spinner :ensure t)
+
+(use-package beacon
+  :ensure t
+  :diminish (beacon-mode . "")
+  :config (beacon-mode t))
+
+(use-package anzu
+  :ensure t
+  :diminish anzu-mode
+  :config (global-anzu-mode t))
+
+(use-package fullframe
+  :ensure t
+  :commands magit-status
+  :config (fullframe magit-status magit-mode-quit-window))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package linum-relative
+  :ensure t
+  :diminish linum-relative-mode
+  :init
+  (add-hook 'prog-mode-hook 'linum-relative-mode))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package rainbow-delimiters
+  :ensure t
+  :diminish rainbow-delimiters-mode
+  :config
+  (add-hook 'prog-mode-hook 'rainbow-mode))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(diminish 'undo-tree-mode)
+(diminish 'eldoc-mode)
+(diminish 'auto-fill-function (string 32 #xa7))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package telephone-line
+  :ensure t
+  :config 
+  (set-face-foreground 'persp-selected-face "SlateGrey")
+  (setq projectile-mode-line
+	'(:eval (if (file-remote-p default-directory)
+		    " P"
+		  (format " P[%s]" (projectile-project-name))))
+	telephone-line-lhs
+	'((evil   . (telephone-line-evil-tag-segment))
+	  (accent . (telephone-line-vc-segment
+		     telephone-line-erc-modified-channels-segment
+		     telephone-line-process-segment))
+	  (nil    . (telephone-line-minor-mode-segment
+		     telephone-line-buffer-segment))))
+  (setq telephone-line-rhs
+	'((nil . (telephone-line-misc-info-segment))
+	  (evil . (telephone-line-major-mode-segment))))
+  (setq telephone-line-primary-right-separator 'telephone-line-abs-left
+	telephone-line-secondary-right-separator 'telephone-line-abs-hollow-left)
+  (setq telephone-line-height 24
+	telephone-line-evil-use-short-tag t)
+  :init
+  (telephone-line-evil-config))
+#+END_SRC
+
+
+* Language Support
+
+#+BEGIN_SRC emacs-lisp
+(setq-default truncate-lines t)
+#+END_SRC
+  
+Flycheck is an on the fly linter for a whole bunch of languages. For
+some languages it might cause some performance-issues, so be aware.
+  
+#+BEGIN_SRC emacs-lisp
+(use-package flycheck
+  :ensure t
+  :init
+  (global-flycheck-mode))
+#+END_SRC
+  
+Par-edit makes editing of s-expressions easier by keeping your
+parenthesis balanced and adding key-bindings for some structural
+modifications of code. It's mostly useful with lisps, but can also be
+handy elsewhere as well, so learn par-edit. It's time well spent.
+  
+#+BEGIN_SRC emacs-lisp
+(use-package paredit
+  :ensure t
+  :diminish paredit-mode
+  :bind (("C-M-U" . paredit-forward-down))
+  :init
+  (add-hook-to-modes lisp-modes 'paredit-mode))
+#+END_SRC
+  
+#+BEGIN_SRC elisp
+(use-package company
+  :ensure t
+  :config
+  (global-company-mode))
+#+END_SRC
+  
+#+BEGIN_SRC elisp
+(use-package flyspell
+  :ensure t
+  :diminish flyspell-mode
+  :config
+  (setq ispell-program-name "aspell"
+	ispell-extra-args '("--sug-mode=ultra"))
+  :init
+  (add-hook 'text-mode-hook 'flyspell-mode)
+  (add-hook 'git-commit-mode-hook 'flyspell-mode)
+  (add-hook 'prog-mode-hook 'flyspell-prog-mode))
+
+(use-package auto-dictionary
+  :ensure t
+  :init
+  (add-hook 'flyspell-mode-hook (lambda () (auto-dictionary-mode t))))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(defun use-symbols ()
+  "Translate some defined words into unicode symbols"
+  (setq prettify-symbols-alist
+	'(("defn"    . "ƒ")
+	  ("defn-"   . "ʄ")
+	  ("fn"      . "λ")
+	  ("#{"      . "∈{")
+	  ("partial" . "Ƥ")
+	  ("comp"    . "∘")
+	  ("delta"   . "Δ")
+	  ("not="    . "≠")
+	  (">="      . "≥")
+	  ("<="      . "≤"))))
+#+END_SRC
+
+** Clojure
+
+#+BEGIN_SRC emacs-lisp
+(defun clojure-hook ()
+  (paredit-mode t)
+  (eldoc-mode t)
+  (subword-mode t)
+  (rainbow-delimiters-mode t))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package sayid :ensure t)
+#+END_SRC
+   
+#+BEGIN_SRC emacs-lisp
+(use-package cider
+  :ensure t
+  :config
+  (setq nrepl-log-messages t
+	nrepl-hide-special-buffers t
+	nrepl-buffer-name-show-port t
+	cider-repl-pop-to-buffer-on-connect nil
+	cider-repl-display-help-banner nil
+	cider-show-error-buffer t
+	cider-auto-select-error-buffer t
+	cider-repl-history-file "~/.eyre/cider-history"
+	cider-repl-wrap-history t
+	cider-cljs-lein-repl "(do (use 'figwheel-sidecar.repl-api) (start-figwheel!) (cljs-repl))")
+  :init
+  (add-hook 'clojure-mode-hook 'use-symbols)
+  (add-hook 'cider-mode-hook #'clojure-hook)
+  (add-hook 'cider-repl-mode-hook #'clojure-hook)
+  (global-prettify-symbols-mode t))
+#+END_SRC
+ 
+#+BEGIN_SRC emacs-lisp
+(use-package clojure-mode
+  :ensure t
+  :commands clojure-mode
+  :config
+  (use-package clojure-mode-extra-font-locking :ensure t)
+  (setq clojure-align-forms-automatically t
+	initial-scratch-message nil)
+  :init
+  (add-to-list 'auto-mode-alist '("\\.edn$" . clojure-mode))
+  (add-to-list 'auto-mode-alist '("\\.boot$" . clojure-mode))
+  (add-hook 'cider-mode-hook #'clojure-hook)
+  (add-hook 'clojure-mode-hook 'cider-mode)
+  (add-hook 'clojure-mode-hook 'sayid-setup-package))
+#+END_SRC
+   
+#+BEGIN_SRC emacs-lisp
+(use-package clojurescript-mode
+  :ensure t
+  :commands clojurescript-mode
+  :init
+  (add-hook 'clojurescript-mode 'clojure-mode-hook))
+#+END_SRC
+   
+#+BEGIN_SRC emacs-lisp
+(use-package clj-refactor
+  :ensure t
+  :diminish clj-refactor-mode
+  :config
+  (setq cljr-warn-on-eval nil)
+  (cljr-add-keybindings-with-prefix "C-c e")
+  :init
+  (add-hook 'clojure-mode-hook 'clj-refactor-mode))
+#+END_SRC
+
+*** Snippets
+
+;#+BEGIN_SRC elisp :tangle ~/.eyre/snippets/clojure-mode/go
+;# name: timeout
+;# key: timeout
+;# --
+;(go (<! (timeout $1))
+;    ($0))
+;#+END_SRC
+
+
+** Elm
+   
+#+BEGIN_SRC emacs-lisp
+(use-package elm-mode
+  :ensure t
+  :config
+  (setq elm-format-on-save t)
+  :init
+  (use-package flycheck-elm
+    :ensure t
+    :init
+    (eval-after-load 'flycheck
+      '(add-hook 'flycheck-mode-hook #'flycheck-elm-setup))))
+#+END_SRC
+   
+** Org
+   
+#+BEGIN_SRC emacs-lisp
+(defun org-mode-defaults ()
+  (turn-on-auto-fill))
+
+(use-package org
+  :ensure t
+  :bind (("C-c c" . org-capture))
+  :config
+  (require 'ob-tangle)
+  (require 'ox-latex)
+  (use-package org-habit)
+  (load-library "find-lisp")
+  (custom-set-variables
+   '(org-directory "~/org")
+   '(org-default-notes-file (concat org-directory "/Notes.org"))
+   '(org-agenda-files (find-lisp-find-files org-directory "\.org$")))
+  (setq org-agenda-start-with-follow-mode t
+	org-hide-emphasis-markers t
+	org-ditaa-jar-path "/usr/local/bin/ditaa"
+	org-src-window-setup 'current-window
+	org-confirm-babel-evaluate nil
+	org-edit-src-content-indentation 0
+	org-src-tab-acts-natively t
+	org-src-fontify-natively t
+	org-latex-listings 'minted
+	org-export-with-smart-quotes t
+	org-ellipsis "•••"
+	org-adapt-indentation nil
+	org-latex-pdf-process
+	'("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+	  "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+	  "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"))
+  (add-to-list 'org-latex-packages-alist '("" "minted"))
+  (org-babel-do-load-languages
+   (quote org-babel-load-languages)
+   (quote ((emacs-lisp . t)
+	   (dot . t)
+	   (org . t)
+	   (ditaa . t)
+	   (clojure . t)
+	   (css . t)
+	   (sh . t)
+	   (haskell . t)
+	   (makefile . t))))
+  (add-hook 'org-mode-hook 'org-mode-defaults))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package ledger-mode
+  :ensure t)
+#+END_SRC
+
+I use some languages from org-mode more than others and it's kind of
+tedious to write their full-name etc every time I want to blurb out
+some code, so here's a few handy shortcuts
+
+#+BEGIN_SRC emacs-lisp
+; Clojure-code
+(add-to-list 'org-structure-template-alist
+	     (list "clj" "#+BEGIN_SRC clojure\n?\n#+END_SRC" "<src lang=\"clojure\">\n?\n</src>"))
+
+; Emacs-lisp-code
+(add-to-list 'org-structure-template-alist
+	     (list "el" "#+BEGIN_SRC emacs-lisp\n?\n#+END_SRC" "<src lang=\"emacs-lisp\">\n?\n</src>"))
+
+; Haskell-code
+(add-to-list 'org-structure-template-alist
+	     (list "hs" "#+BEGIN_SRC haskell\n?\n#+END_SRC" "<src lang=\"haskell\">\n?\n</src>"))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-sticky-header
+  :ensure t)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-bullets
+  :ensure t
+  :init
+  (setq org-bullets-bullet-list '("●"))
+  (add-hook 'org-mode-hook #'org-bullets-mode))
+#+END_SRC
+
+I'd like to get started journaling everything that affects my
+well-being and progression. That means, I would like an entry for each
+day that summarizes all my flaws and achievements. It will also need a
+bit or two where I reflect upon it and possibly set a goal.
+
+#+BEGIN_SRC emacs-lisp
+(setq org-capture-templates
+      '(("j" "Jornal" entry (file+datetree (concat org-directory "/Journal.org")) "* %U %?\n%i\n")))
+#+END_SRC
