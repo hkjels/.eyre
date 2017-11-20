@@ -364,22 +364,12 @@ Some additional aliases that are interactive
   (general-evil-setup t))
 #+END_SRC
   
-What was that binding again? Well, guide-key will tell you as long as
-you keep the top-level key in mind.
-  
 #+BEGIN_SRC emacs-lisp
-(use-package guide-key
+(use-package which-key
   :ensure t
-  :diminish guide-key-mode
-  :config
-  (setq guide-key/guide-key-sequence '("<SPC>" "C-c" "M-g" "C-x")
-        guide-key/recursive-key-sequence-flag t
-        guide-key/idle-delay 0.3
-        guide-key/popup-window-position 'bottom)
-  :init
-  (guide-key-mode 1))
-#+END_SRC
-  
+  :config (which-key-setup-minibuffer)
+  :init (which-key-mode))
+#+END_SRC 
   
 * Projects
   
@@ -557,6 +547,13 @@ fringe on the left-side of the screen.
   :ensure t)
 #+END_SRC
 
+
+* Services
+
+#+BEGIN_SRC emacs-lisp
+(use-package restclient
+  :ensure t)
+#+END_SRC
 
 * Aestetics
   
@@ -890,32 +887,32 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 
 *** Snippets
 
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/go
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/go :mkdirp true
 # name: timeout
 # key: timeout
 # --
 (go (<! (timeout $1))
-($0))
+  ($0))
 #+END_SRC
 
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-fx
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-fx :mkdirp true
 # name: reg-event-fx
 # key: fx
 # --
 (re-frame/reg-event-fx
-:$0
-(fn [{:keys [db]} [_ $1]]
-$2))
+  :$1
+  (fn [{:keys [db]} [_ $2]]
+    $0))
 #+END_SRC
 
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-db
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-db :mkdirp true
 # name: reg-event-db
 # key: db
 # --
 (re-frame/reg-event-db
-:$0
-(fn [db [_ $1]]
-$2))
+  :$1
+  (fn [db [_ $2]]
+    $0))
 #+END_SRC
 
 ** Elm
@@ -977,8 +974,14 @@ $2))
            (css . t)
            (sh . t)
            (haskell . t)
-           (makefile . t))))
+           (makefile . t)
+           (restclient . t))))
   (add-hook 'org-mode-hook 'org-mode-defaults))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package ob-restclient
+  :ensure t)
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
