@@ -949,8 +949,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 # key: c
 # --
 (comment
-  $0
-  )
+  $0)
 #+END_SRC
 
 #+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/go

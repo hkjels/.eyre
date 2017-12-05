@@ -1,0 +1,5 @@
+# name: comment
+# key: c
+# --
+(comment
+  $0)
