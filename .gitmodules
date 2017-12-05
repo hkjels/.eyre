@@ -1,0 +1,9 @@
+[submodule "packages/re-jump.el"]
+	path = packages/re-jump.el
+	url = https://github.com/oliyh/re-jump.el
+[submodule "chrome-emacsclient"]
+	path = packages/chrome-emacsclient
+	url = https://github.com/szarsti/chrome-emacsclient
+[submodule "packages/dimmer.el"]
+	path = packages/dimmer.el
+	url = https://github.com/gonewest818/dimmer.el

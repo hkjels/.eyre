@@ -134,6 +134,14 @@ Macrostep is a handy little package that lets you expand elisp-macros.
          (async-bytecomp-package-mode 1)))
 #+END_SRC
   
+Whenever you'd like to test a package, you can use ~try~. Try will
+download and run the package, but it will not be persisted to your
+next session.
+#+BEGIN_SRC emacs-lisp
+(use-package try
+  :ensure t)
+#+END_SRC
+
 #+BEGIN_SRC emacs-lisp
 (defun add-hook-to-modes (modes hook)
   (dolist (mode modes)
@@ -306,6 +314,7 @@ Some additional aliases that are interactive
   (ansi-term "/usr/local/bin/bash"))
 #+END_SRC
 
+
 #+BEGIN_SRC emacs-lisp
 (defun buffers/scratch ()
   "Switch to existing or create a new scratch-buffer."
@@ -322,7 +331,7 @@ Some additional aliases that are interactive
   :config
   (setq general-default-keymaps 'evil-normal-state-map)
   (general-define-key :prefix "SPC"
-                      "SPC" 'avy-goto-char-2
+                      "SPC" 'avy-goto-word-1
                       "'"  'terminal
                       "/"  'helm-resume
                       "a"  'agenda
@@ -367,6 +376,7 @@ Some additional aliases that are interactive
 #+BEGIN_SRC emacs-lisp
 (use-package which-key
   :ensure t
+  :diminish which-key-mode
   :config (which-key-setup-minibuffer)
   :init (which-key-mode))
 #+END_SRC 
@@ -491,6 +501,12 @@ can not leave behind.
               ("A-<tab>" . hs-hide-all)))
 #+END_SRC
   
+#+BEGIN_SRC emacs-lisp
+(use-package chrome-emacsclient
+  :load-path "~/.eyre/packages/chrome-emacsclient"
+  :commands (chromeserv-find-file httpd/chromeserv/visit)
+  :after simple-httpd)
+#+END_SRC
 
 * Version Control
   
@@ -555,6 +571,12 @@ fringe on the left-side of the screen.
   :ensure t)
 #+END_SRC
 
+#+BEGIN_SRC emacs-lisp
+(use-package simple-httpd
+  :ensure t
+  :config (setq httpd-port 8081))
+#+END_SRC
+
 * Aestetics
   
 #+BEGIN_SRC emacs-lisp
@@ -567,6 +589,11 @@ fringe on the left-side of the screen.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
+(setq scroll-conservatively 10000
+      scroll-preserve-screen-position t)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (use-package all-the-icons
   :ensure t)
 #+END_SRC
@@ -575,6 +602,14 @@ fringe on the left-side of the screen.
 (use-package material-theme
   :ensure t
   :init (load-theme 'material :no-confirm))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package dimmer
+  :load-path "~/.eyre/packages/dimmer.el"
+  :commands dimmer-activate
+  :config (setq dimmer-percent 0.4)
+  :init (dimmer-activate))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -633,11 +668,20 @@ of chrome, this pretty much disables all of it for MacOS.
   :config
   (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
 #+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package undo-tree
+  :ensure t
+  :diminish undo-tree-mode
+  :config (defalias 'redo 'undo-tree-redo)
+  :init (global-undo-tree-mode 1))
+#+END_SRC
   
 #+BEGIN_SRC emacs-lisp
 (diminish 'undo-tree-mode)
 (diminish 'eldoc-mode)
 (diminish 'auto-fill-function (string 32 #xa7))
+(diminish 'auto-revert-mode)
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -802,6 +846,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 
 (use-package cider
   :ensure t
+  :diminish cider-mode
   :config
   (setq nrepl-log-messages t
         nrepl-buffer-name-show-port t
@@ -812,6 +857,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
         cider-repl-history-file "~/.eyre/cider-history"
         cider-repl-wrap-history t
         cider-repl-use-pretty-printing t
+        cider-boot-parameters "cider repl -s wait"
         cider-cljs-lein-repl "(do (require 'figwheel-sidecar.repl-api)
                                   (figwheel-sidecar.repl-api/start-figwheel!)
                                   (figwheel-sidecar.repl-api/cljs-repl))"
@@ -822,6 +868,12 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   (add-hook 'cider-repl-mode-hook #'clojure-hook)
   (global-prettify-symbols-mode t))
 #+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package re-jump
+  :disabled
+  :load-path "~/.eyre/packages/re-jump.el")
+#+END_SRC
  
 #+BEGIN_SRC emacs-lisp
 (use-package clojure-mode-extra-font-locking :ensure t)
@@ -831,6 +883,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   :commands clojure-mode
   :config
   (setq clojure-align-forms-automatically t
+        clojure-indent-style ':always-align
         initial-scratch-message nil)
   :init (progn
           (add-to-list 'auto-mode-alist '("\\.edn$" . clojure-mode))
@@ -887,7 +940,20 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 
 *** Snippets
 
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/go :mkdirp true
+:PROPERTIES:
+:mkdirp: true
+:END:
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/c
+# name: comment
+# key: c
+# --
+(comment
+  $0
+  )
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/go
 # name: timeout
 # key: timeout
 # --
@@ -895,7 +961,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   ($0))
 #+END_SRC
 
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-fx :mkdirp true
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-fx
 # name: reg-event-fx
 # key: fx
 # --
@@ -905,7 +971,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
     $0))
 #+END_SRC
 
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-db :mkdirp true
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-db
 # name: reg-event-db
 # key: db
 # --
@@ -943,7 +1009,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   (use-package org-habit)
   (load-library "find-lisp")
   (custom-set-variables
-   '(org-directory "~/org")
+   '(org-directory (expand-file-name "~/org"))
    '(org-default-notes-file (concat org-directory "/Notes.org"))
    '(org-agenda-files (find-lisp-find-files org-directory "\.org$")))
   (setq org-agenda-start-with-follow-mode t
@@ -1026,7 +1092,8 @@ bit or two where I reflect upon it and possibly set a goal.
 
 #+BEGIN_SRC emacs-lisp
 (setq org-capture-templates
-      '(("j" "Jornal" entry (file+datetree (concat org-directory "/Journal.org")) "* %U %?\n%i\n")))
+      '(("a" "Automate" entry (file+datetree (concat org-directory "/Automation.org")) "* %^{prompt}\n\n%?")
+        ("j" "Jornal" entry (file+datetree (concat org-directory "/Journal.org")) "* %U %?\n%i\n")))
 #+END_SRC
 
 ** Web
