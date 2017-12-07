@@ -66,7 +66,7 @@ We'll use [[https://github.com/jwiegley/use-package][use-package]] to manage our
 (require 'use-package)
 #+END_SRC
   
-  
+ 
 * Configuration Helpers
   
 #+BEGIN_SRC emacs-lisp
@@ -253,6 +253,13 @@ Found this when googling https://gist.github.com/mwfogleman/95cc60c87a9323876c6c
 (bind-key "C-c n" 'narrow-or-widen-dwim)
 #+END_SRC
 
+#+BEGIN_SRC emacs-lisp
+  (use-package rg
+    ;; :ensure-system-package rg
+    )
+#+END_SRC
+
+
 * Menues
   
 ** Prefix-commands
@@ -381,6 +388,7 @@ Some additional aliases that are interactive
   :init (which-key-mode))
 #+END_SRC 
   
+
 * Projects
   
 #+BEGIN_SRC emacs-lisp
@@ -508,6 +516,7 @@ can not leave behind.
   :after simple-httpd)
 #+END_SRC
 
+
 * Version Control
   
 Without this property set to true, you would most likely jump of a
@@ -577,6 +586,7 @@ fringe on the left-side of the screen.
   :config (setq httpd-port 8081))
 #+END_SRC
 
+
 * Aestetics
   
 #+BEGIN_SRC emacs-lisp
@@ -608,7 +618,8 @@ fringe on the left-side of the screen.
 (use-package dimmer
   :load-path "~/.eyre/packages/dimmer.el"
   :commands dimmer-activate
-  :config (setq dimmer-percent 0.4)
+  :config (setq dimmer-percent 0.4
+                dimmer-exclusion-regexp "^\*")
   :init (dimmer-activate))
 #+END_SRC
 
@@ -795,23 +806,25 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 (defun use-symbols ()
   "Translate some defined words into unicode symbols"
   (setq prettify-symbols-alist
-        '(("defn"       . "ƒ")
-          ("defn-"      . "ʄ")
-          ("#("         . "ƒ(")
-          ("fn"         . "ƒ")
-          ("#{"         . "∈{")
-          ("->"         . "→")
-          ("->>"        . "⇒")
-          ("partial"    . "Ƥ")
-          ("comp"       . "∘")
-          ("alpha"      . "α")
-          ("beta"       . "β")
-          ("delta"      . "Δ")
-          ("delta-time" . "ΔT")
-          ("pi"         . "π")
-          ("not="       . "≠")
-          (">="         . "≥")
-          ("<="         . "≤"))))
+	'(("defn"       . ?ƒ)
+	  ("defn-"      . ?ʄ)
+	  ("#("         . (?ƒ (Br . Bl) ?())
+	  ("fn"         . ?ƒ)
+	  ("#{"         . (?∈ (Br . Bl) ?{))
+	  ("->"         . ?→)
+	  ("->>"        . ?⇒)
+	  ("partial"    . ?Ƥ)
+	  ("comp"       . ?∘)
+	  ("alpha"      . ?α)
+	  ("beta"       . ?β)
+	  ("delta"      . ?Δ)
+	  ;; ("delta-time" . '(?Δ (Br . Bl) ?T )
+	  ("pi"         . ?π)
+	  ("not="       . ?≠)
+	  (">="         . ?≥)
+	  ("<="         . ?≤)
+	  ("true"       . ?✓)
+	  ("false"      . ?✘))))
 #+END_SRC
 
 ** Clojure
@@ -1148,4 +1161,11 @@ bit or two where I reflect upon it and possibly set a goal.
 (use-package company-tern
   :ensure t
   :config (add-to-list 'company-backends 'company-tern))
+#+END_SRC
+
+** Markdown
+
+#+BEGIN_SRC emacs-lisp
+(use-package markdown
+  :ensure t)
 #+END_SRC
