@@ -428,12 +428,18 @@ Some additional aliases that are interactive
   :ensure t
   :bind (("M-x" . helm-M-x))
   :config
-  (setq helm-quick-update t
-        helm-M-x-fuzzy-match t
-        helm-mode-fuzzy-match t
-        helm-apropos-fuzzy-match t
-        helm-buffers-fuzzy-matching t
-        helm-recentf-fuzzy-match t))
+  (progn
+    (setq helm-quick-update t
+          helm-candidate-number-limit 100
+          helm-locate-command "mdfind -name %s %s"
+          helm-ff-skip-boring-files t
+          helm-autoresize-min-height 10
+          helm-M-x-fuzzy-match t
+          helm-mode-fuzzy-match t
+          helm-apropos-fuzzy-match t
+          helm-buffers-fuzzy-matching t
+          helm-recentf-fuzzy-match t)
+    (helm-autoresize-mode t)))
 
 (use-package helm-projectile
   :ensure t
