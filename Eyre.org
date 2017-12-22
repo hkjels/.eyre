@@ -630,8 +630,16 @@ fringe on the left-side of the screen.
 #+END_SRC
 
 
-* Aestetics
+* Aesthetics
   
+#+BEGIN_SRC emacs-lisp
+(use-package golden-ratio
+  :ensure t
+  :diminish golden-ratio-mode
+  :init
+  (golden-ratio-mode 1))
+#+END_SRC
+
 #+BEGIN_SRC emacs-lisp
 (setq-default line-spacing 12
               linum-relative-current-symbol "")
