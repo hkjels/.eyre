@@ -566,6 +566,7 @@ of emacs. Usually happens when you switch branch etc.
   
 #+BEGIN_SRC emacs-lisp
 (global-auto-revert-mode t)
+(add-hook 'dired-mode-hook 'auto-revert-mode)
 #+END_SRC
   
 [[https://magit.vc/][Magit]] is pretty much the de-facto interface for git in Emacs and for
