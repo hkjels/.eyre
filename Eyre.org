@@ -196,6 +196,10 @@ Paths
 
 (add-hook 'term-exec-hook 'kill-term-buffer)
 #+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(setq delete-by-moving-to-trash t)
+#+END_SRC
   
   
 * Terminal
