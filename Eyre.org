@@ -1233,6 +1233,6 @@ bit or two where I reflect upon it and possibly set a goal.
 ** Markdown
 
 #+BEGIN_SRC emacs-lisp
-(use-package markdown
+(use-package markdown-mode
   :ensure t)
 #+END_SRC
