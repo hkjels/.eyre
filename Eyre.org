@@ -198,6 +198,17 @@ Paths
 #+END_SRC
   
   
+* Terminal
+
+#+BEGIN_SRC emacs-lisp
+(use-package shell-pop
+  :ensure t
+  :config
+  (setq shell-pop-shell-type (quote ("ansi-term" "*ansi-term*" (lambda nil (ansi-term shell-pop-term-shell)))))
+  (setq shell-pop-term-shell "/usr/local/bin/bash")
+  (shell-pop--set-shell-type 'shell-pop-shell-type shell-pop-shell-type))
+#+END_SRC
+
 * Startup
   
 #+BEGIN_SRC emacs-lisp
@@ -306,6 +317,7 @@ commands true purpose.
 | git/diff                  | magit-diff-popup                |
 | git/checkout              | magit-checkout                  |
 | git/blame                 | magit-blame-mode                |
+| terminal                  | shell-pop                       |
 
 Massage the table above into usable commands
 #+BEGIN_SRC emacs-lisp :var aliases=aliases
