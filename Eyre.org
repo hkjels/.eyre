@@ -53,7 +53,7 @@ you can see all of the repositories that ~Eyre~ will scour.
 #+BEGIN_SRC emacs-lisp :var repos=repos
 (dolist (repo (cdr repos))
   (when (listp repo)
-    (add-to-list 'package-archives (cons (car repo) (cadr repo)))))
+    (add-to-list 'package-archives (cons (concat (car repo)) (concat (cadr repo))))))
 #+END_SRC
   
 We'll use [[https://github.com/jwiegley/use-package][use-package]] to manage our packages and how their loaded.
@@ -326,13 +326,7 @@ Massage the table above into usable commands
     (defalias (intern (car als)) (intern (cadr als)))))
 #+END_SRC
 
-Some additional aliases that are interactive
-#+BEGIN_SRC emacs-lisp
-(defun terminal ()
-  (interactive)
-  (ansi-term "/usr/local/bin/bash"))
-#+END_SRC
-
+Some additional "aliases" that are interactive
 
 #+BEGIN_SRC emacs-lisp
 (defun buffers/scratch ()
