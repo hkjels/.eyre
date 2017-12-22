@@ -918,20 +918,22 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   :ensure t
   :diminish cider-mode
   :config
-  (setq nrepl-log-messages t
-        nrepl-buffer-name-show-port t
-        cider-repl-pop-to-buffer-on-connect nil
-        cider-repl-display-help-banner t
-        cider-show-error-buffer t
-        cider-auto-select-error-buffer t
-        cider-repl-history-file "~/.eyre/cider-history"
-        cider-repl-wrap-history t
-        cider-repl-use-pretty-printing t
-        cider-boot-parameters "cider repl -s wait"
-        cider-cljs-lein-repl "(do (require 'figwheel-sidecar.repl-api)
+  (progn
+    (setq nrepl-log-messages t
+          nrepl-buffer-name-show-port t
+          cider-repl-pop-to-buffer-on-connect nil
+          cider-repl-display-help-banner t
+          cider-show-error-buffer t
+          cider-auto-select-error-buffer t
+          cider-repl-history-file "~/.eyre/cider-history"
+          cider-repl-wrap-history t
+          cider-repl-use-pretty-printing t
+          cider-boot-parameters "cider repl -s wait"
+          cider-cljs-boot-repl "(future (boot (dev)))"
+          cider-cljs-lein-repl "(do (require 'figwheel-sidecar.repl-api)
                                   (figwheel-sidecar.repl-api/start-figwheel!)
                                   (figwheel-sidecar.repl-api/cljs-repl))"
-        cider-pprint-fn 'fipp)
+          cider-pprint-fn 'fipp))
   :init
   (add-hook 'clojure-mode-hook 'use-symbols)
   (add-hook 'cider-mode-hook #'clojure-hook)
