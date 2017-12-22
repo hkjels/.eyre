@@ -536,6 +536,14 @@ can not leave behind.
   :after simple-httpd)
 #+END_SRC
 
+#+BEGIN_SRC emacs-lisp
+(use-package multiple-cursors
+  :ensure t
+  :bind (("M-." . mc/mark-next-like-this)
+         ("M-," . mc/unmark-next-like-this)
+         ("C-S-<mouse-1>" . mc/add-cursor-on-click)))
+#+END_SRC
+
 
 * Version Control
   
