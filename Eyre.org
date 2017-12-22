@@ -1218,10 +1218,6 @@ bit or two where I reflect upon it and possibly set a goal.
 (use-package prettier-js
   :ensure t
   :init (add-hook 'js2-mode-hook 'prettier-js-mode))
-
-(use-package prettier-eslint
-  :ensure t
-  :config (add-hook 'js2-mode-hook (lambda () (add-hook 'after-save-hook 'prettier-eslint nil t))))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
