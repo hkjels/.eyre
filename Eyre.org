@@ -465,29 +465,37 @@ Some additional aliases that are interactive
 Evil introduces modal-bindings to emacs, similar to that of vim. As a
 longtime vim-user, I must say it's like editing super-powers that I
 can not leave behind.
-  
+
 #+BEGIN_SRC emacs-lisp
+;; (defun remove-first-occurance ()
+;;   (interactive)
+;;   (evil-ex "s//"))
+
 (use-package evil
   :ensure t
-  :config
-  (use-package evil-visualstar
-    :ensure t
-    :commands (evil-visualstar/begin-search-forward
-               evil-visualstar/begin-search-backward)
-    :bind
-    (:map evil-visual-state-map
-          ([(?*)] . evil-visualstar/begin-search-forward)
-          ([(?#)] . evil-visualstar/begin-search-backward)))
-  (use-package evil-iedit-state
-    :ensure t)
-  (use-package evil-exchange
-    :ensure t)
-  (use-package evil-surround
-    :ensure t
-    :init
-    (global-evil-surround-mode 1))
+  ;; :bind ("C-s" . remove-first-occurance)
   :init
   (evil-mode 1))
+
+(use-package evil-iedit-state
+  :ensure t
+  :after evil)
+
+(use-package evil-exchange
+  :ensure t
+  :after evil)
+
+(use-package evil-surround
+  :ensure t
+  :after evil
+  :init
+  (global-evil-surround-mode 1))
+
+(use-package evil-visualstar
+  :ensure t
+  :after evil
+  :config (setq evil-visualstar/persistent t)
+  :init (global-evil-visualstar-mode))
 #+END_SRC
   
   
