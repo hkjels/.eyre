@@ -213,6 +213,15 @@ Paths
   (shell-pop--set-shell-type 'shell-pop-shell-type shell-pop-shell-type))
 #+END_SRC
 
+
+* Help
+
+#+BEGIN_SRC emacs-lisp
+(use-package tldr
+  :ensure t)
+#+END_SRC
+
+
 * Startup
   
 #+BEGIN_SRC emacs-lisp
