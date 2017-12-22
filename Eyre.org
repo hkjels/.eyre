@@ -753,31 +753,31 @@ of chrome, this pretty much disables all of it for MacOS.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-  (use-package telephone-line
-    :ensure t
-    :config 
-    (progn
-      (set-face-foreground 'persp-selected-face "SlateGrey")
-      (setq projectile-mode-line
-	    '(:eval (if (file-remote-p default-directory)
-			" P"
-		      (format " P[%s]" (projectile-project-name))))
-	    telephone-line-lhs
-	    '((evil   . (telephone-line-evil-tag-segment))
-	      (accent . (telephone-line-vc-segment
-			 telephone-line-erc-modified-channels-segment
-			 telephone-line-process-segment))
-	      (nil    . (telephone-line-minor-mode-segment
-			 telephone-line-buffer-segment))))
-      (setq telephone-line-rhs
-	    '((nil . (telephone-line-misc-info-segment))
-	      (evil . (telephone-line-major-mode-segment))))
-      (setq telephone-line-primary-right-separator 'telephone-line-abs-left
-	    telephone-line-secondary-right-separator 'telephone-line-abs-hollow-left)
-      (setq telephone-line-height 24
-	    telephone-line-evil-use-short-tag t))
-    :init
-    (telephone-line-evil-config))
+(use-package telephone-line
+  :ensure t
+  :config 
+  (progn
+    (set-face-foreground 'persp-selected-face "SlateGrey")
+    (setq projectile-mode-line
+          '(:eval (if (file-remote-p default-directory)
+                      " P"
+                    (format " P[%s]" (projectile-project-name))))
+          telephone-line-lhs
+          '((evil   . (telephone-line-evil-tag-segment))
+            (accent . (telephone-line-vc-segment
+                       telephone-line-erc-modified-channels-segment
+                       telephone-line-process-segment))
+            (nil    . (telephone-line-minor-mode-segment
+                       telephone-line-buffer-segment))))
+    (setq telephone-line-rhs
+          '((nil . (telephone-line-misc-info-segment))
+            (evil . (telephone-line-major-mode-segment))))
+    (setq telephone-line-primary-right-separator 'telephone-line-abs-left
+          telephone-line-secondary-right-separator 'telephone-line-abs-hollow-left)
+    (setq telephone-line-height 24
+          telephone-line-evil-use-short-tag t))
+  :init
+  (telephone-line-evil-config))
 #+END_SRC
 
 
