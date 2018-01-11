@@ -49,13 +49,13 @@ you can see all of the repositories that ~Eyre~ will scour.
 | melpa        | http://melpa.org/packages/          |
 | melpa-stable | http://stable.melpa.org/packages/   |
 | marmalade    | http://marmalade-repo.org/packages/ |
+| gnu          | https://elpa.gnu.org/packages/      |
+| org          | http://orgmode.org/elpa             |
   
 #+BEGIN_SRC emacs-lisp :var repos=repos
-(dolist (repo (cdr repos))
-  (when (listp repo)
-    (add-to-list 'package-archives (cons (concat (car repo)) (concat (cadr repo))))))
+(setq package-archives repos)
 #+END_SRC
-  
+
 We'll use [[https://github.com/jwiegley/use-package][use-package]] to manage our packages and how their loaded.
   
 #+BEGIN_SRC emacs-lisp
