@@ -7,3 +7,6 @@
 [submodule "packages/dimmer.el"]
 	path = packages/dimmer.el
 	url = https://github.com/gonewest818/dimmer.el
+[submodule "packages/asana.el"]
+	path = packages/asana.el
+	url = https://github.com/bdo-labs/asana.el

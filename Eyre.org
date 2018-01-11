@@ -156,7 +156,6 @@ next session.
                    emacs-lisp))
 #+END_SRC
   
-Paths
 #+BEGIN_SRC emacs-lisp
 (defconst src-file (expand-file-name "~/.eyre/Eyre.org"))
 (defconst conf-dir (file-name-directory load-file-name))
@@ -169,10 +168,17 @@ Paths
 #+END_SRC  
 
 #+BEGIN_SRC emacs-lisp
-(prefer-coding-system 'utf-8)
+(use-package exec-path-from-shell
+  :ensure t
+  :config (exec-path-from-shell-initialize))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(prefer-coding-system 'utf-8-unix)
 (set-language-environment "utf-8")
 (set-selection-coding-system 'utf-8)
-(setq locale-coding-system 'utf-8)
+(setq locale-coding-system 'utf-8
+      file-name-coding-system 'utf-8-unix)
 (setq-default buffer-file-coding-system 'utf-8-unix)
 #+END_SRC
   
@@ -200,7 +206,7 @@ Paths
 #+BEGIN_SRC emacs-lisp
 (setq delete-by-moving-to-trash t)
 #+END_SRC
-  
+ 
   
 * Terminal
 
@@ -350,6 +356,50 @@ Some additional "aliases" that are interactive
 
 
 * Bindings							      :cheatsheet:
+
+The global prefix-key is ~SPC~, after hitting space, you'll be presented
+with a ~which-key~ menu with the following bindings
+
+| Key-binding | Command                   |
+|-------------+---------------------------|
+| SPC         | avy-goto-word-1           |
+| '           | terminal                  |
+| /           | helm-resume               |
+| a           | agenda                    |
+| b           | buffers                   |
+| bp          | buffers/previous          |
+| bb          | buffers/list              |
+| bk          | buffers/kill              |
+| bo          | buffers/kill-other        |
+| bs          | buffers/scratch           |
+| f           | files                     |
+| ff          | helm-find-files           |
+| fc          | find-configurations-file  |
+| fs          | sudo-edit                 |
+| g           | git                       |
+| gb          | git/blame                 |
+| gi          | git/init                  |
+| gl          | git/log                   |
+| gs          | git/status                |
+| gd          | git/diff                  |
+| gc          | git/checkout              |
+| h           | history                   |
+| hu          | undo-tree-visualize       |
+| hk          | helm-show-kill-ring       |
+| r           | REPL                      |
+| p           | projects                  |
+| p/          | projects/search           |
+| pf          | projects/find-file        |
+| ps          | projects/switch           |
+| tf          | toggle/fullscreen         |
+| w           | window                    |
+| ws          | window/switch             |
+| wr          | window/rename             |
+| wl          | window/switch-to-last     |
+| wk          | window/kill               |
+| wz          | window/zoom               |
+| w           | window/split-vertically   |
+| w-          | window/split-horizontally |
   
 #+BEGIN_SRC emacs-lisp
 (use-package general
@@ -467,7 +517,14 @@ Some additional "aliases" that are interactive
          ("M-g c" . avy-goto-char-2)))
 #+END_SRC
   
-  
+#+BEGIN_SRC emacs-lisp
+(use-package asana
+  :load-path "~/.eyre/packages/asana.el"
+  :commands asana-tasklist
+  :bind (("C-c a" . asana-tasklist)))
+#+END_SRC
+
+
 * Efficient Editing
   
 #+BEGIN_SRC emacs-lisp
@@ -557,6 +614,13 @@ can not leave behind.
          ("C-S-<mouse-1>" . mc/add-cursor-on-click)))
 #+END_SRC
 
+#+BEGIN_SRC emacs-lisp
+(use-package saveplace
+  :ensure t
+  :config
+  (setq-default save-place t))
+#+END_SRC
+
 
 * Version Control
   
@@ -631,13 +695,35 @@ fringe on the left-side of the screen.
 
 
 * Aesthetics
+
+#+BEGIN_SRC emacs-lisp
+(use-package delight
+  :ensure t)
+#+END_SRC
   
 #+BEGIN_SRC emacs-lisp
 (use-package golden-ratio
   :ensure t
   :diminish golden-ratio-mode
+  :config
+  (add-hook 'post-command-hook 'golden-ratio)
   :init
   (golden-ratio-mode 1))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package centered-cursor-mode
+  :ensure t
+  :delight centered-cursor-mode
+  :config
+  (global-centered-cursor-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package centered-window-mode
+  :ensure t
+  :config
+  (centered-window-mode))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -1075,7 +1161,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
    
 ** Org
    
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :exports both
 (defun org-mode-defaults ()
   (turn-on-auto-fill))
 
@@ -1087,11 +1173,13 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   (require 'ox-latex)
   (use-package org-habit)
   (load-library "find-lisp")
-  (custom-set-variables
-   '(org-directory (expand-file-name "~/org"))
-   '(org-default-notes-file (concat org-directory "/Notes.org"))
-   '(org-agenda-files (find-lisp-find-files org-directory "\.org$")))
-  (setq org-agenda-start-with-follow-mode t
+  (add-to-list 'org-latex-packages-alist '("" "minted"))
+  (add-to-list 'org-latex-packages-alist '("" "listings"))
+  (add-to-list 'org-latex-packages-alist '("" "color"))
+  (setq org-directory (expand-file-name "~/org")
+        org-default-notes-file (concat org-directory "/Notes.org")
+        org-agenda-files (find-lisp-find-files org-directory "\.org$")
+        org-agenda-start-with-follow-mode t
         org-hide-emphasis-markers t
         org-ditaa-jar-path "/usr/local/bin/ditaa"
         org-src-window-setup 'current-window
@@ -1104,11 +1192,11 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
         org-ellipsis "•••"
         org-adapt-indentation nil
         org-latex-logfiles-extensions (quote ("lof" "lot" "tex~" "aux" "idx" "log" "out" "toc" "nav" "snm" "vrb" "dvi" "fdb_latexmk" "blg" "brf" "fls" "entoc" "ps" "spl" "bbl"))
+        org-latex-listings 'minted
         org-latex-pdf-process
         '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
           "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
           "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"))
-  (add-to-list 'org-latex-packages-alist '("" "minted"))
   (org-babel-do-load-languages
    (quote org-babel-load-languages)
    (quote ((emacs-lisp . t)
