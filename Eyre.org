@@ -990,6 +990,20 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
+(defun zprint ()
+  (interactive)
+  (let ((cmd (concat "lein zprint " buffer-file-name)))
+    (basic-save-buffer)
+    (shell-command cmd)))
+
+
+(use-package zprint
+  :after clojure-mode
+  :bind (:map cider-mode-map
+         ("C-c f" . zprint)))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (use-package sayid
   :ensure t
   :after clojure-mode
