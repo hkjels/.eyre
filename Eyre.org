@@ -1259,8 +1259,8 @@ bit or two where I reflect upon it and possibly set a goal.
 
 #+BEGIN_SRC emacs-lisp
 (setq org-capture-templates
-      '(("a" "Automate" entry (file+datetree (concat org-directory "/Automation.org")) "* %^{prompt}\n\n%?")
-        ("j" "Jornal" entry (file+datetree (concat org-directory "/Journal.org")) "* %U %?\n%i\n")))
+      `(("a" "Automate" entry (file+datetree ,(expand-file-name (concat org-directory "/Automation.org"))) "* %^{prompt}\n\n%?")
+        ("j" "Jornal" entry (file+datetree ,(expand-file-name (concat org-directory "/Journal.org"))) "* %U %?\n%i\n")))
 #+END_SRC
 
 ** Web
