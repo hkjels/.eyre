@@ -721,6 +721,7 @@ fringe on the left-side of the screen.
 
 #+BEGIN_SRC emacs-lisp
 (use-package centered-window-mode
+  :disabled
   :ensure t
   :config
   (centered-window-mode))
@@ -760,7 +761,20 @@ fringe on the left-side of the screen.
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
+(use-package deeper-blue-theme
+  :ensure t
+  :config
+  (custom-theme-set-faces 'deeper-blue
+                          '(fringe ((t (:background "#181a26"))))
+                          '(telephone-line-evil-normal ((t (:inherit telephone-line-evil :background "violet red"))))
+                          '(mode-line ((((class color) (min-colors 89)) (:box (:line-width 1 :style released-button) :foreground "black" :background "light slate blue"))))
+                          '(mode-line-buffer-id ((((class color) (min-colors 89)) (:weight bold :background nil :foreground "midnight blue"))))
+                          '(mode-line-inactive ((t (:box (:line-width 1 :style pressed-button) :foreground "black" :background "dark slate blue")))))
+  :init (load-theme 'deeper-blue :no-confirm))
+
+
 (use-package material-theme
+  :disabled
   :ensure t
   :init (load-theme 'material :no-confirm))
 #+END_SRC
@@ -1335,8 +1349,10 @@ bit or two where I reflect upon it and possibly set a goal.
   :ensure t)
 #+END_SRC
 
+
 * Abbreviations
 
+#+NAME: abbreviations
 | Abbreviation      | Full specimen |
 |-------------------+---------------|
 | very afraid       | terrified     |
@@ -1384,3 +1400,15 @@ bit or two where I reflect upon it and possibly set a goal.
 | very wicked       | villainous    |
 | very wise         | sagacious     |
 | very worried      | anxious       |
+
+#+BEGIN_SRC emacs-lisp :var abbreviations=abbreviations
+(let ((abbrs (cons `(("@name" . ,user-full-name)
+                     ("@mail" . ,user-mail-address)) abbreviations)))
+  (define-abbrev-table 'global-abbrev-table abbrs))
+#+END_SRC
+
+
+* Notes of Improvement
+
+** TODO When reloading Eyre, perspectives should be conserved
+** TODO Automatically open browser when connecting to a browser-REPL
