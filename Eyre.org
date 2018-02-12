@@ -143,6 +143,14 @@ next session.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
+(use-package super-save
+  :ensure t
+  :config (setq super-save-auto-save-when-idle t
+                auto-save-default nil)
+  :init (super-save-mode +1))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (defun add-hook-to-modes (modes hook)
   (dolist (mode modes)
     (add-hook (intern (concat (symbol-name mode) "-mode-hook"))
@@ -335,7 +343,7 @@ commands true purpose.
 | git/log                   | magit-log-popup                 |
 | git/diff                  | magit-diff-popup                |
 | git/checkout              | magit-checkout                  |
-| git/blame                 | magit-blame-mode                |
+| git/blame                 | magit-blame                     |
 | terminal                  | shell-pop                       |
 
 Massage the table above into usable commands
@@ -762,10 +770,9 @@ fringe on the left-side of the screen.
   
 #+BEGIN_SRC emacs-lisp
 (use-package deeper-blue-theme
-  :ensure t
+  :defer t
   :config
   (custom-theme-set-faces 'deeper-blue
-                          '(fringe ((t (:background "#181a26"))))
                           '(telephone-line-evil-normal ((t (:inherit telephone-line-evil :background "violet red"))))
                           '(mode-line ((((class color) (min-colors 89)) (:box (:line-width 1 :style released-button) :foreground "black" :background "light slate blue"))))
                           '(mode-line-buffer-id ((((class color) (min-colors 89)) (:weight bold :background nil :foreground "midnight blue"))))
@@ -776,6 +783,9 @@ fringe on the left-side of the screen.
 (use-package material-theme
   :disabled
   :ensure t
+  :config
+  (custom-theme-set-faces 'material
+                          '(fringe ((t (:background "#181a26")))))
   :init (load-theme 'material :no-confirm))
 #+END_SRC
 
@@ -1350,9 +1360,18 @@ bit or two where I reflect upon it and possibly set a goal.
 #+END_SRC
 
 
+* Box-specific Preferences
+
+#+BEGIN_SRC emacs-lisp
+(let ((path (expand-file-name "~/.eyre.local")))
+  (when (file-exists-p path)
+      (load-file path)))
+#+END_SRC
+
+
 * Abbreviations
 
-#+NAME: abbreviations
+#+NAME: abbrev-table
 | Abbreviation      | Full specimen |
 |-------------------+---------------|
 | very afraid       | terrified     |
@@ -1401,10 +1420,13 @@ bit or two where I reflect upon it and possibly set a goal.
 | very wise         | sagacious     |
 | very worried      | anxious       |
 
-#+BEGIN_SRC emacs-lisp :var abbreviations=abbreviations
-(let ((abbrs (cons `(("@name" . ,user-full-name)
-                     ("@mail" . ,user-mail-address)) abbreviations)))
-  (define-abbrev-table 'global-abbrev-table abbrs))
+** TODO Fix abbreviations-table
+There's something off about the data-format
+#+BEGIN_SRC emacs-lisp :var abbrev-table=abbrev-table
+;; (let* ((dyn `(("@name" . ,user-full-name)
+;;               ("@mail" . ,user-mail-address)))
+;;        (abbreviations (concat dyn abbrev-table)))
+;;   (define-abbrev-table 'global-abbrev-table abbreviations))
 #+END_SRC
 
 
