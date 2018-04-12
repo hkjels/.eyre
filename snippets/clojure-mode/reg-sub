@@ -1,0 +1,7 @@
+# name: reg-sub
+# key: sub
+# --
+(re-frame/reg-sub
+  ::$1
+  (fn [db ${2:path}]
+    (get-in db $2))

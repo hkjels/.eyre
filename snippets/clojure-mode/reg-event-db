@@ -2,6 +2,6 @@
 # key: db
 # --
 (re-frame/reg-event-db
-  :$1
-  (fn [db [_ $2]]
+  ::$1
+  (fn [db [k $2]]
     $0))

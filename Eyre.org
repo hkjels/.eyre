@@ -7,6 +7,7 @@
 #+OPTIONS:              toc:nil num:nil author:nil date:nil
 #+EXPORT_EXCLUDE_TAGS:  noexport
 #+LANGUAGE:             en
+#+PROPERTY:             header-args :mkdirp yes :noweb yes
 
 #+BEGIN_QUOTE
 I am no bird; and no net ensnares me; I am a free human being with
@@ -30,7 +31,10 @@ breakage.
   
 * Package Management
   
-Greately improve startup-performance by tweaking garbage-collection
+Before downloading and installing any packages, I highly recommend a
+tweak to the garbage-collector. These few lines will speed up
+boot-time quite a bit and will allow your emacs-client to run smoothly
+for weeks.
 #+BEGIN_SRC emacs-lisp
 (setq gc-cons-threshold 64000000
       gc-cons-percentage 0.6)
@@ -39,9 +43,9 @@ Greately improve startup-performance by tweaking garbage-collection
                                          gc-cons-percentage 0.1)))
 #+END_SRC
 
-We'll use a combination of [[https://github.com/jwiegley/use-package][use-package]] and [[https://github.com/raxod502/straight.el][straight.el]] to manage
-packages.  Straight will clone all of the repositories, so you can
-easily make changes and push them to your own fork.
+To actually manage packages, I like the combination of [[https://github.com/jwiegley/use-package][use-package]] and
+[[https://github.com/raxod502/straight.el][straight.el]].  Straight will clone all of the repositories, so you can
+actually make changes and push them to your own fork quite seamlessly.
 #+BEGIN_SRC emacs-lisp
 (let ((bootstrap-file (concat user-emacs-directory "straight/repos/straight.el/bootstrap.el"))
       (bootstrap-version 3))
@@ -58,7 +62,7 @@ easily make changes and push them to your own fork.
 (setq straight-use-package-by-default t)
 #+END_SRC
  
-To set up your own fork, you simply supply a recipe to ~straight.el~
+To set up your own fork, you supply a recipe to ~straight.el~ like this:
 #+BEGIN_EXAMPLE emacs-lisp
 (use-package el-patch
   :straight (el-patch :type git :host github :repo "your-name/el-patch"
@@ -69,17 +73,23 @@ To set up your own fork, you simply supply a recipe to ~straight.el~
  
 * Configuration Helpers
 
+From time and again, my configuration accumulate some cruft that
+weighs it down. Starting emacs with ~EMACS_BENCHMARK~ set to true
+can be quite helpful in finding the culprit.
 #+BEGIN_SRC emacs-lisp
 (use-package benchmark-init
   :when (not (eq nil (getenv "EMACS_BENCHMARK")))
   :config (benchmark-init/activate)
   :init (add-hook 'after-init-hook #'benchmark-init/deactivate))
 #+END_SRC  
-  
+
+Use ~y~ and ~n~ instead of ~yes~ and ~no~ when answering silly questions.
 #+BEGIN_SRC emacs-lisp
 (fset 'yes-or-no-p 'y-or-n-p)
 #+END_SRC  
  
+Sometimes it's nice to just kill all other buffers than the one your
+currently editing to get a clean slate.
 #+BEGIN_SRC emacs-lisp
 (defun kill-other-buffers ()
   "Kill all other buffers than the current."
@@ -87,7 +97,11 @@ To set up your own fork, you simply supply a recipe to ~straight.el~
   (mapc 'kill-buffer
 	(delq (current-buffer)
 	      (remove-if-not 'buffer-file-name (buffer-list)))))
+#+END_SRC
 
+If you ask me, editing as sudo should have been part of the stack of
+emacs native commands, but hey..
+#+BEGIN_SRC emacs-lisp
 (defun sudo-edit (&optional arg)
   "Edit currently visited file as root.
 
@@ -103,36 +117,44 @@ To set up your own fork, you simply supply a recipe to ~straight.el~
     (goto-char cursor-position)))
 #+END_SRC
 
+I haven't needed [[https://github.com/lewang/command-log-mode][command-log-mode]] that much, but it might come in
+handy if I ever need to screencast a package I've made.
 #+BEGIN_SRC emacs-lisp
 (use-package command-log-mode
   :commands (command-log-mode clm/toggle-command-log-buffer))
 #+END_SRC
   
-Macrostep is a handy little package that lets you expand elisp-macros.
-  
+[[https://github.com/joddie/macrostep][Macrostep]] is a handy little package that lets you expand elisp-macros.
 #+BEGIN_SRC emacs-lisp
 (use-package macrostep
   :commands (macrostep-mode macrostep-expand)
   :bind (("C-c e" . macrostep-expand)))
 #+END_SRC
 
+[[https://github.com/jwiegley/emacs-async][Async]] does exactly what it sounds like. It can run commands
+asynchronously. You can use it to byte-compile Eyre with a little
+performance-boost.
 #+BEGIN_SRC emacs-lisp
 (use-package async
-  :commands (async-bytecomp-allowed-packages dired-async-mode async-bytecomp-package-mode)
+  :commands (dired-async-mode async-bytecomp-package-mode)
   :config (setq async-bytecomp-allowed-packages '(all))
   :init 
+  (autoload 'dired-async-mode "dired-async.el" nil t)
   (dired-async-mode 1)
   (async-bytecomp-package-mode 1))
 #+END_SRC
   
 Whenever you'd like to test a package, you can use ~try~. Try will
 download and run the package, but it will not be persisted to your
-next session.
+next session. Give it a try 😝
 #+BEGIN_SRC emacs-lisp
 (use-package try
   :commands try)
 #+END_SRC
 
+[[https://github.com/bbatsov/super-save][Super-save]] will automatically persist your buffers to files upon
+certain events. Typically when emacs looses focus or you switch
+between buffers etc.
 #+BEGIN_SRC emacs-lisp
 (use-package super-save
   :commands super-save-mode
@@ -149,13 +171,7 @@ next session.
 	      hook)))
 #+END_SRC
   
-#+BEGIN_SRC emacs-lisp
-(setq lisp-modes '(clojure
-                   lisp
-                   list-interaction
-                   emacs-lisp))
-#+END_SRC
-  
+ 
 #+BEGIN_SRC emacs-lisp
 (defconst src-file (expand-file-name "~/.eyre/Eyre.org"))
 (defconst conf-dir (file-name-directory load-file-name))
@@ -165,6 +181,7 @@ next session.
       create-lockfiles nil
       auto-save-file-name-transforms `((".*" ,backup-dir t))
       auto-save-list-file-prefix backup-dir)
+(setq large-file-warning-threshold 100000000)
 #+END_SRC  
 
 #+BEGIN_SRC emacs-lisp
@@ -240,7 +257,8 @@ next session.
       inhibit-startup-message t
       initial-scratch-message ""
       initial-major-mode 'org-mode
-      inhibit-startup-echo-area-message t)
+      inhibit-startup-echo-area-message t
+      load-prefer-newer t)
 #+END_SRC
   
 By running ~emacs~ as a server, we can throw stuff at it from an
@@ -288,6 +306,10 @@ Found this when googling https://gist.github.com/mwfogleman/95cc60c87a9323876c6c
 (bind-key "C-c n" 'narrow-or-widen-dwim)
 #+END_SRC
 
+Enable mouse-support
+#+BEGIN_SRC emacs-lisp
+(xterm-mouse-mode t)
+#+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package rg
@@ -464,6 +486,35 @@ with a ~which-key~ menu with the following bindings
   :init (which-key-mode))
 #+END_SRC 
   
+Hydrated bindings
+#+BEGIN_SRC emacs-lisp
+(use-package hydra :straight t)
+(use-package dash :straight t)
+(use-package s :straight t)
+
+(use-package major-mode-hydra
+  :straight (major-mode-hydra :type git :host github :repo "hkjels/major-mode-hydra.el"
+                              :upstream (:host github
+                                         :repo "jerrypnz/major-mode-hydra.el"))
+  :config 
+  (require 'hydra)
+  (require 'dash)
+  (require 's)
+  (major-mode-hydra-bind clojurec-mode "Connect"
+    ("j" cider-jack-in "jack-in")
+    ("J" cider-jack-in-clojurescript "jack-in-cljs")
+    ("c" cider-connect "connect")
+    ("R" cider-restart "restart")
+    ("Q" cider-quit "quit"))
+
+  (major-mode-hydra-bind clojurec-mode "Load"
+    ("k" cider-load-buffer "buffer")
+    ("l" cider-load-file "file")
+    ("L" cider-load-all-project-ns "all-ns")
+    ("r" cider-refresh "reload"))
+  :bind ("C-M-m" . major-mode-hydra))
+#+END_SRC
+
 
 * Projects
   
@@ -475,10 +526,16 @@ with a ~which-key~ menu with the following bindings
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
+(defun open-project-at ()
+  (cond ((file-exists-p (concat default-directory "/README*")) (find-file (concat default-directory "/README*")))
+        ((file-exists-p (concat default-directory "/.git")) (magit-status))
+        (t (projectile-find-file))))
+
 (use-package projectile
   :commands (projectile-mode projectile-dired projectile-shell projectile-find-file)
   :diminish projectile-mode
-  :config (setq projectile-completion-system 'helm)
+  :config (setq projectile-completion-system 'helm
+		projectile-switch-project-action 'open-project-at)
   :init (projectile-global-mode))
 
 (use-package perspective
@@ -491,16 +548,20 @@ with a ~which-key~ menu with the following bindings
   :config
   (progn
     (setq helm-quick-update t
-          helm-candidate-number-limit 100
-          helm-locate-command "mdfind -name %s %s"
-          helm-ff-skip-boring-files t
-          helm-autoresize-min-height 10
-          helm-M-x-fuzzy-match t
-          helm-mode-fuzzy-match t
-          helm-apropos-fuzzy-match t
-          helm-buffers-fuzzy-matching t
-          helm-recentf-fuzzy-match t)
+	  helm-candidate-number-limit 100
+	  helm-locate-command "mdfind -name %s %s"
+	  helm-ff-skip-boring-files t
+	  helm-autoresize-min-height 10
+	  helm-M-x-fuzzy-match t
+	  helm-mode-fuzzy-match t
+	  helm-apropos-fuzzy-match t
+	  helm-buffers-fuzzy-matching t
+	  helm-recentf-fuzzy-match t)
     (helm-autoresize-mode t)))
+
+(use-package helm-flx
+  :straight t
+  :init (helm-flx-mode +1))
 
 (use-package helm-projectile
   :commands (helm-projectile-switch-project helm-projectile-find-file)
@@ -516,7 +577,7 @@ with a ~which-key~ menu with the following bindings
 (use-package avy
   :commands (avy-goto-line avy-goto-char-2)
   :bind (("M-g l" . avy-goto-line)
-         ("M-g c" . avy-goto-char-2)))
+	 ("M-g c" . avy-goto-char-2)))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
@@ -525,7 +586,7 @@ with a ~which-key~ menu with the following bindings
 ;  :commands asana-tasklist
 ;  :bind (("C-c a" . asana-tasklist)))
 #+END_SRC
-
+  
 
 * Efficient Editing
   
@@ -638,14 +699,15 @@ good reasons. I've set it up so it suits my vim-mussles a little better.
              magit-diff-popup
              magit-log-popup
              magit-statu)
-  :config (general-define-key :prefix "SPC"))
+  :config 
+  (setq magit-no-confirm '(discard revert stage-all-changes unstage-all-changes))
+  (general-define-key :prefix "SPC"))
 
 (use-package magithub
-  :disabled
   :after magit
   :config (magithub-feature-autoinject t))
 
-(use-package evil-magit
+(use-package evil-magit 
   :after magit)
 #+END_SRC
   
@@ -694,11 +756,6 @@ more versatile than the more popular ~git-gutter~.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(setq scroll-conservatively 10000
-      scroll-preserve-screen-position t)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
 (setq visible-bell t)
 (setq auto-revert-verbose nil)
 #+END_SRC
@@ -718,7 +775,16 @@ more versatile than the more popular ~git-gutter~.
   
 #+BEGIN_SRC emacs-lisp
 (use-package nord-theme
+  :disabled
   :init (load-theme 'nord t))
+
+(use-package sublime-themes
+  :config
+  :init
+  ;; (load-theme 'brin t)
+  ;; (load-theme 'hickey t)
+  ;; (load-theme 'fogus t)
+  (load-theme 'junio t))
 
 (use-package material-theme
   :disabled
@@ -813,7 +879,7 @@ of chrome, this pretty much disables all of it for MacOS.
   :after perspective
   :config 
   (progn
-    (set-face-foreground 'persp-selected-face "SlateGrey")
+    (set-face-foreground 'persp-selected-face "SteelBlue4")
     (setq projectile-mode-line
           '(:eval (if (file-remote-p default-directory)
                       " P"
@@ -847,22 +913,39 @@ of chrome, this pretty much disables all of it for MacOS.
 #+BEGIN_SRC emacs-lisp
 (setq-default truncate-lines t)
 #+END_SRC
+
+Here's a list of languages that I would like to treat like lisp
+#+BEGIN_SRC emacs-lisp
+(setq lisp-modes '(clojure
+                   lisp
+                   list-interaction
+                   emacs-lisp))
+#+END_SRC
   
 Flycheck is an on the fly linter for a whole bunch of languages. For
 some languages it might cause some performance-issues, so be aware.
-  
 #+BEGIN_SRC emacs-lisp
 (use-package flycheck
   :straight t
   :defer 1
   :init (global-flycheck-mode))
+
+(use-package flycheck-pos-tip
+  :straight t
+  :after (flycheck)
+  :init (flycheck-pos-tip-mode))
+
+(use-package flycheck-clojure
+  :straight t
+  :defer t
+  :after (flycheck clojure-mode)
+  :init (flycheck-clojure-setup))
 #+END_SRC
   
 Par-edit makes editing of s-expressions easier by keeping your
 parenthesis balanced and adding key-bindings for some structural
 modifications of code. It's mostly useful with lisps, but can also be
 handy elsewhere as well, so learn par-edit. It's time well spent.
-  
 #+BEGIN_SRC emacs-lisp
 (use-package paredit
   :commands paredit-mode
@@ -895,7 +978,6 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   
 #+BEGIN_SRC emacs-lisp
 (use-package company
-  :defer 1
   :diminish company-mode
   :init (global-company-mode))
 
@@ -1002,7 +1084,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   (setq nrepl-log-messages t
         nrepl-buffer-name-show-port t
         cider-repl-pop-to-buffer-on-connect nil
-        cider-font-lock-dynamically '(macro core function var)
+        cider-font-lock-dynamically '(macro core function var partial comp -> ->>)
         cider-overlays-use-font-lock t
         cider-eldoc-display-context-dependent-info t
         cider-repl-display-help-banner t
@@ -1026,9 +1108,8 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-;(use-package re-jump
-;  :disabled
-;  :load-path "~/.eyre/packages/re-jump.el")
+(use-package re-jump
+   :straight (re-jump :type git :host github :repo "oliyh/re-jump.el"))
 #+END_SRC
  
 #+BEGIN_SRC emacs-lisp
@@ -1075,24 +1156,16 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   (add-hook 'clojure-mode-hook 'clj-refactor-mode))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp
-(use-package flycheck-clojure
-  :straight t
-  :defer t
-  :after (flycheck clojure-mode)
-  :init (flycheck-clojure-setup))
-
-(use-package flycheck-pos-tip
-  :straight t
-  :after (flycheck)
-  :init (flycheck-pos-tip-mode))
-#+END_SRC
 
 *** Snippets
 
-:PROPERTIES:
-:mkdirp: true
-:END:
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/separator
+# name: separator
+# key: -
+# --
+;; ${1:Heading} ${1:$(make-string (- 71 (string-width yas-text)) ?\-)}
+$0
+#+END_SRC
 
 #+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/c
 # name: comment
@@ -1153,8 +1226,8 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 # key: fx
 # --
 (re-frame/reg-event-fx
-  :$1
-  (fn [{:keys [db]} [_ $2]]
+  ::$1
+  (fn [{:keys [db]} [k $2]]
     $0))
 #+END_SRC
 
@@ -1163,9 +1236,19 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 # key: db
 # --
 (re-frame/reg-event-db
-  :$1
-  (fn [db [_ $2]]
+  ::$1
+  (fn [db [k $2]]
     $0))
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-sub
+# name: reg-sub
+# key: sub
+# --
+(re-frame/reg-sub
+  ::$1
+  (fn [db ${2:path}]
+    (get-in db $2))
 #+END_SRC
 
 #+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/log
@@ -1173,6 +1256,33 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 # key: l
 # --
 (util/log $0)
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/extract-keys
+# name: extract-keys
+# key: ek
+# --
+{:keys [${1:keys}]${2: :or {$3}}}
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/defm
+# name: defmulti
+# key: defm
+# --
+(defmulti ${1:name} ${2:"${3:docstring?}" {:arglists '([$5])}}
+  (fn [${5:args}]
+    $6)
+  ${4::default ::default})
+
+${4:(defmethod $1 ::default [_] $7)}
+
+(defmethod $1 ${8:match}
+  [${9:args}]
+  $10)
+
+(defmethod $1 ${11:match}
+  [$9]
+  $0)
 #+END_SRC
 
 ** Elm
@@ -1292,6 +1402,25 @@ bit or two where I reflect upon it and possibly set a goal.
         ("j" "Jornal" entry (file+datetree ,(expand-file-name (concat org-directory "/Journal.org"))) "* %U %?\n%i\n")))
 #+END_SRC
 
+*** Snippets
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/org-mode/doc
+# name: doc
+# key: #+
+# --
+,#+TITLE:                $1
+${2:#+SUBTITLE:             $3}
+,#+AUTHOR:               `user-full-name`
+,#+EMAIL:                `user-mail-address`
+
+,#+LANGUAGE:             en
+
+,#+SEQ_TODO:             TODO(t) INPROGRESS(i) REVIEW(r@) | DONE(d) CANCELED(c@)
+,#+TAGS:                 noexport(n)
+,#+EXPORT_EXCLUDE_TAGS:  noexport
+,#+OPTIONS:              toc:4 h:4
+#+END_SRC
+
 ** Web
 
 #+BEGIN_SRC emacs-lisp
@@ -1357,14 +1486,6 @@ bit or two where I reflect upon it and possibly set a goal.
 #+END_SRC
 
 
-* Box-specific Preferences
-
-#+BEGIN_SRC emacs-lisp
-(let ((path (expand-file-name "~/.eyre.local")))
-  (when (file-exists-p path)
-      (load-file path)))
-#+END_SRC
-
 
 * Abbreviations
 
@@ -1416,6 +1537,8 @@ bit or two where I reflect upon it and possibly set a goal.
 | very wicked       | villainous    |
 | very wise         | sagacious     |
 | very worried      | anxious       |
+| disapproval       | ಠ_ಠ           |
+| shrug             | ¯\_(ツ)_/¯    |
 
 ** TODO Fix abbreviations-table
 There's something off about the data-format
@@ -1427,7 +1550,21 @@ There's something off about the data-format
 #+END_SRC
 
 
+* Box-specific Preferences
+
+So Eyre does not have the layered goodness of Spacemacs and other
+similar run-commands, but you can override and add your own shit as
+long as you keep it locally. Touch a file at ~~/.eyre.local~ and
+sprinkle it with some magical elisp-dust and you should be all set.
+#+BEGIN_SRC emacs-lisp
+(let ((path (expand-file-name "~/.eyre.local")))
+  (when (file-exists-p path)
+      (load-file path)))
+#+END_SRC
+
+
 * Notes of Improvement
 
+** TODO Make fancy-symbols compatible with formatters
 ** TODO When reloading Eyre, perspectives should be conserved
 ** TODO Automatically open browser when connecting to a browser-REPL

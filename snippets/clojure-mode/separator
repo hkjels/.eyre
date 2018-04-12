@@ -1,0 +1,5 @@
+# name: separator
+# key: -
+# --
+;; ${1:Heading} ${1:$(make-string (- 71 (string-width yas-text)) ?\-)}
+$0

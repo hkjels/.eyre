@@ -1,0 +1,14 @@
+# name: doc
+# key: #+
+# --
+#+TITLE:                $1
+${2:#+SUBTITLE:             $3}
+#+AUTHOR:               `user-full-name`
+#+EMAIL:                `user-mail-address`
+
+#+LANGUAGE:             en
+
+#+SEQ_TODO:             TODO(t) INPROGRESS(i) REVIEW(r@) | DONE(d) CANCELED(c@)
+#+TAGS:                 noexport(n)
+#+EXPORT_EXCLUDE_TAGS:  noexport
+#+OPTIONS:              toc:4 h:4
