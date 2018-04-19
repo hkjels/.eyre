@@ -240,13 +240,12 @@ between buffers etc.
   (setq shell-pop-term-shell "/usr/local/bin/bash")
   (shell-pop--set-shell-type 'shell-pop-shell-type shell-pop-shell-type))
 #+END_SRC
-
-
+          
+ 
 * Help
 
 #+BEGIN_SRC emacs-lisp
-(use-package tldr
-  :commands tldr)
+(use-package tldr :commands tldr)
 #+END_SRC
 
 
@@ -284,14 +283,9 @@ make you more productive.
 
 (add-hook 'after-init-hook 'agenda)
 #+END_SRC
-  
-
+                                    
+ 
 * Navigation
-
-#+BEGIN_SRC emacs-lisp
-;(use-package ido-mode
-;  :init (ido-mode 1))
-#+END_SRC
 
 Found this when googling https://gist.github.com/mwfogleman/95cc60c87a9323876c6c
 #+BEGIN_SRC emacs-lisp
@@ -315,8 +309,8 @@ Enable mouse-support
 (use-package rg
   :commands rg)
 #+END_SRC
-
-
+                             
+ 
 * Menues
   
 ** Prefix-commands
@@ -381,9 +375,9 @@ Some additional "aliases" that are interactive
   (interactive)
   (switch-to-buffer-other-window (get-buffer-create "*scratch*")))
 #+END_SRC
-
-
-* Bindings							      :cheatsheet:
+                                                                
+ 
+* Bindings                                                       :cheatsheet:
 
 The global prefix-key is ~SPC~, after hitting space, you'll be presented
 with a ~which-key~ menu with the following bindings
@@ -514,8 +508,8 @@ Hydrated bindings
     ("r" cider-refresh "reload"))
   :bind ("C-M-m" . major-mode-hydra))
 #+END_SRC
-
-
+                                                                                                                                   
+ 
 * Projects
   
 #+BEGIN_SRC emacs-lisp
@@ -532,15 +526,24 @@ Hydrated bindings
         (t (projectile-find-file))))
 
 (use-package projectile
+  :straight t
   :commands (projectile-mode projectile-dired projectile-shell projectile-find-file)
   :diminish projectile-mode
   :config (setq projectile-completion-system 'helm
-		projectile-switch-project-action 'open-project-at)
+		            projectile-switch-project-action 'open-project-at)
   :init (projectile-global-mode))
 
 (use-package perspective
-  :config (persp-mode t)
-  (use-package persp-projectile))
+  :straight (perspective :type git :host github :repo "hkjels/perspective-el" :branch "no-frame-local-vars"
+                              :upstream (:host github
+                                         :repo "nex3/perspective-el"))
+  :config (persp-mode t))
+
+(use-package persp-projectile
+  :straight (persp-projectile :type git :host github :repo "hkjels/persp-projectile" :branch "frame-perspective-hash"
+                              :upstream (:host github
+                                         :repo "bbatsov/persp-projectile"))
+  :after (perspective projectile))
 
 (use-package helm
   :defer 1
@@ -575,9 +578,9 @@ Hydrated bindings
   :commands (helm-ag helm-ag-this-file))
 
 (use-package avy
-  :commands (avy-goto-line avy-goto-char-2)
+  :commands (avy-goto-line avy-goto-char-2 avy-goto-word-1)
   :bind (("M-g l" . avy-goto-line)
-	 ("M-g c" . avy-goto-char-2)))
+	       ("M-g c" . avy-goto-char-2)))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
@@ -586,8 +589,8 @@ Hydrated bindings
 ;  :commands asana-tasklist
 ;  :bind (("C-c a" . asana-tasklist)))
 #+END_SRC
-  
-
+                                                                                 
+ 
 * Efficient Editing
   
 #+BEGIN_SRC emacs-lisp
@@ -600,22 +603,13 @@ longtime vim-user, I must say it's like editing super-powers that I
 can not leave behind.
 
 #+BEGIN_SRC emacs-lisp
-;; (defun remove-first-occurance ()
-;;   (interactive)
-;;   (evil-ex "s//"))
+(use-package evil :init (evil-mode 1))
 
-(use-package evil
-  ;; :bind ("C-s" . remove-first-occurance)
-  :init (evil-mode 1))
+(use-package evil-iedit-state :after evil)
 
-(use-package evil-iedit-state
-  :after evil)
+(use-package evil-exchange :after evil)
 
-(use-package evil-exchange
-  :after evil)
-
-(use-package evil-ediff
-  :after evil)
+(use-package evil-ediff :after evil)
 
 (use-package evil-surround
   :after evil
@@ -630,7 +624,6 @@ can not leave behind.
   :after evil
   :config (evil-commentary-mode))
 #+END_SRC
-  
   
 #+BEGIN_SRC emacs-lisp
 (use-package key-chord
@@ -678,8 +671,8 @@ can not leave behind.
 (use-package saveplace
   :config (setq-default save-place t))
 #+END_SRC
-
-
+                                                                                          
+ 
 * Version Control
   
 Without this property set to true, you would most likely jump of a
@@ -691,7 +684,7 @@ of emacs. Usually happens when you switch branch etc.
 (add-hook 'dired-mode-hook 'auto-revert-mode)
 #+END_SRC
   
-[[https://magit.vc/][Magit]] is pretty much the de-facto interface for git in Emacs and for
+Magit]] is pretty much the de-facto interface for git in Emacs and for
 good reasons. I've set it up so it suits my vim-mussles a little better.
 #+BEGIN_SRC emacs-lisp
 (use-package magit
@@ -719,16 +712,16 @@ more versatile than the more popular ~git-gutter~.
   :straight t
   :config (global-diff-hl-mode t))
 #+END_SRC
-  
-
+                                         
+ 
 * Services
 
 #+BEGIN_SRC emacs-lisp
 (use-package restclient
   :commands (restclient-mode restclient-http-send-current restclient-copy-curl-command))
 #+END_SRC
-
-
+      
+ 
 * Aesthetics
   
 #+BEGIN_SRC emacs-lisp
@@ -737,13 +730,6 @@ more versatile than the more popular ~git-gutter~.
   :diminish golden-ratio-mode
   :config (add-hook 'post-command-hook 'golden-ratio)
   :init (golden-ratio-mode 1))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package centered-cursor-mode
-  :defer 1
-  :delight centered-cursor-mode
-  :config (global-centered-cursor-mode))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -775,16 +761,29 @@ more versatile than the more popular ~git-gutter~.
   
 #+BEGIN_SRC emacs-lisp
 (use-package nord-theme
-  :disabled
   :init (load-theme 'nord t))
 
+(use-package flatui-theme
+  :disabled
+  :init (load-theme 'flatui t))
+
+(use-package flatui-dark-theme
+  :disabled
+  :init (load-theme 'flatui-dark t))
+
+(use-package seti-theme
+  :disabled
+  :init
+  (load-theme 'seti t))
+
 (use-package sublime-themes
-  :config
+  :disabled
   :init
   ;; (load-theme 'brin t)
   ;; (load-theme 'hickey t)
   ;; (load-theme 'fogus t)
-  (load-theme 'junio t))
+  ;; (load-theme 'junio t)
+  )
 
 (use-package material-theme
   :disabled
@@ -906,9 +905,9 @@ of chrome, this pretty much disables all of it for MacOS.
 (use-package focus
   :commands focus-mode)
 #+END_SRC
-
-
-* Language Support
+                                                                                                                                                                                 
+ 
+ * Language Support
 
 #+BEGIN_SRC emacs-lisp
 (setq-default truncate-lines t)
@@ -1094,8 +1093,6 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
         cider-repl-wrap-history t
         cider-repl-use-pretty-printing t
         cider-cljs-clojure-repl "clj -Sdeps '{:deps {org.clojure/clojurescript {:mvn/version \"1.10.64\"}}}' -m cljs.main -r"
-        cider-boot-parameters "cider repl -s wait"
-        cider-cljs-boot-repl "(future (boot (dev)))"
         cider-cljs-lein-repl "(do (require 'figwheel-sidecar.repl-api)
                                   (figwheel-sidecar.repl-api/start-figwheel!)
                                   (figwheel-sidecar.repl-api/cljs-repl))"
@@ -1342,16 +1339,18 @@ ${4:(defmethod $1 ::default [_] $7)}
            (ditaa . t)
            (clojure . t)
            (css . t)
-           (sh . t)
            (haskell . t)
-           (makefile . t)
-           (restclient . t))))
+           (makefile . t))))
   (add-hook 'org-mode-hook 'org-mode-defaults))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package ob-restclient
-  :after (org restclient))
+  :after (org restclient)
+  :config
+  (org-babel-do-load-languages
+   (quote org-babel-load-languages)
+   (quote ((restclient . t)))))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -1478,15 +1477,8 @@ ${2:#+SUBTITLE:             $3}
 (use-package markdown-mode
   :commands (markdown-mode))
 #+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package solidity-mode
-  :straight t
-  :commands (solidity-mode))
-#+END_SRC
-
-
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+ 
 * Abbreviations
 
 #+NAME: abbrev-table
@@ -1540,15 +1532,13 @@ ${2:#+SUBTITLE:             $3}
 | disapproval       | ಠ_ಠ           |
 | shrug             | ¯\_(ツ)_/¯    |
 
-** TODO Fix abbreviations-table
-There's something off about the data-format
 #+BEGIN_SRC emacs-lisp :var abbrev-table=abbrev-table
-;; (let* ((dyn `(("@name" . ,user-full-name)
-;;               ("@mail" . ,user-mail-address)))
-;;        (abbreviations (concat dyn abbrev-table)))
-;;   (define-abbrev-table 'global-abbrev-table abbreviations))
+(let* ((dyn `(("@name" ,user-full-name)
+              ("@mail" ,user-mail-address)))
+       (abbreviations (append dyn abbrev-table)))
+  (define-abbrev-table 'global-abbrev-table abbreviations))
 #+END_SRC
-
+ 
 
 * Box-specific Preferences
 
@@ -1561,10 +1551,10 @@ sprinkle it with some magical elisp-dust and you should be all set.
   (when (file-exists-p path)
       (load-file path)))
 #+END_SRC
-
-
+           
+ 
 * Notes of Improvement
 
 ** TODO Make fancy-symbols compatible with formatters
 ** TODO When reloading Eyre, perspectives should be conserved
-** TODO Automatically open browser when connecting to a browser-REPL
+** TODO Automatically open browser when connecting to a browser-REPL    
