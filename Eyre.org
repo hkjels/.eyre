@@ -1300,7 +1300,6 @@ ${4:(defmethod $1 ::default [_] $7)}
   (turn-on-auto-fill))
 
 (use-package org
-  :defer 1
   :bind (("C-c c" . org-capture))
   :config
   (require 'ob-tangle)
