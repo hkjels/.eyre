@@ -1125,6 +1125,13 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   :init 
   (add-hook 'clojure-mode-hook 'cider-format-before-save)
   (add-hook 'clojure-mode-hook 'cider-mode))
+
+(use-package sotclojure
+  :after clojure-mode)
+
+(use-package helm-cider
+  :after (helm cider)
+  :init (helm-cider-mode 1))
 #+END_SRC
    
 #+BEGIN_SRC emacs-lisp
