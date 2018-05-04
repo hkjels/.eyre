@@ -37,7 +37,8 @@ boot-time quite a bit and will allow your emacs-client to run smoothly
 for weeks.
 #+BEGIN_SRC emacs-lisp
 (setq gc-cons-threshold 64000000
-      gc-cons-percentage 0.6)
+      gc-cons-percentage 0.6
+      garbage-collection-messages t)
 
 (add-hook 'after-init-hook #'(lambda () (setq gc-cons-threshold 800000
                                          gc-cons-percentage 0.1)))
@@ -305,12 +306,23 @@ Enable mouse-support
 (xterm-mouse-mode t)
 #+END_SRC
 
+Narrow to region is turned off by default, but I quite like the
+concept of narrow and widen, so I like to force it on.
+#+BEGIN_SRC emacs-lisp
+(put 'narrow-to-region 'disabled nil)
+#+END_SRC
+
 #+BEGIN_SRC emacs-lisp
 (use-package rg
   :commands rg)
 #+END_SRC
-                             
- 
+
+Allways follow symlinks
+#+BEGIN_SRC emacs-lisp
+(setq vc-follow-symlinks t)
+#+END_SRC
+
+
 * Menues
   
 ** Prefix-commands
@@ -376,53 +388,54 @@ Some additional "aliases" that are interactive
   (switch-to-buffer-other-window (get-buffer-create "*scratch*")))
 #+END_SRC
                                                                 
- 
+
 * Bindings                                                       :cheatsheet:
 
 The global prefix-key is ~SPC~, after hitting space, you'll be presented
 with a ~which-key~ menu with the following bindings
 
-| Key-binding | Command                   |
-|-------------+---------------------------|
-| SPC         | avy-goto-word-1           |
-| '           | terminal                  |
-| /           | helm-resume               |
-| a           | agenda                    |
-| b           | buffers                   |
-| bp          | buffers/previous          |
-| bb          | buffers/list              |
-| bk          | buffers/kill              |
-| bo          | buffers/kill-other        |
-| bs          | buffers/scratch           |
-| f           | files                     |
-| ff          | helm-find-files           |
-| fc          | find-configurations-file  |
-| fs          | sudo-edit                 |
-| g           | git                       |
-| gb          | git/blame                 |
-| gi          | git/init                  |
-| gl          | git/log                   |
-| gs          | git/status                |
-| gd          | git/diff                  |
-| gc          | git/checkout              |
-| gp          | git/pull                  |
-| h           | history                   |
-| hu          | undo-tree-visualize       |
-| hk          | helm-show-kill-ring       |
-| r           | REPL                      |
-| p           | projects                  |
-| p/          | projects/search           |
-| pf          | projects/find-file        |
-| ps          | projects/switch           |
-| tf          | toggle/fullscreen         |
-| w           | window                    |
-| ws          | window/switch             |
-| wr          | window/rename             |
-| wl          | window/switch-to-last     |
-| wk          | window/kill               |
-| wz          | window/zoom               |
-| w           | window/split-vertically   |
-| w-          | window/split-horizontally |
+| Key-binding | Command                      |
+|-------------+------------------------------|
+| SPC         | avy-goto-word-1              |
+| '           | terminal                     |
+| /           | helm-resume                  |
+| a           | agenda                       |
+| b           | buffers                      |
+| bp          | buffers/previous             |
+| bb          | buffers/list                 |
+| bk          | buffers/kill                 |
+| bo          | buffers/kill-other           |
+| bs          | buffers/scratch              |
+| f           | files                        |
+| ff          | helm-find-files              |
+| fc          | find-configurations-file     |
+| fd          | dired-sidebar-toggle-sidebar |
+| fs          | sudo-edit                    |
+| g           | git                          |
+| gb          | git/blame                    |
+| gi          | git/init                     |
+| gl          | git/log                      |
+| gs          | git/status                   |
+| gd          | git/diff                     |
+| gc          | git/checkout                 |
+| gp          | git/pull                     |
+| h           | history                      |
+| hu          | undo-tree-visualize          |
+| hk          | helm-show-kill-ring          |
+| r           | REPL                         |
+| p           | projects                     |
+| p/          | projects/search              |
+| pf          | projects/find-file           |
+| ps          | projects/switch              |
+| tf          | toggle/fullscreen            |
+| w           | window                       |
+| ws          | window/switch                |
+| wr          | window/rename                |
+| wl          | window/switch-to-last        |
+| wk          | window/kill                  |
+| wz          | window/zoom                  |
+| w           | window/split-vertically      |
+| w-          | window/split-horizontally    |
   
 #+BEGIN_SRC emacs-lisp
 (use-package general
@@ -443,6 +456,7 @@ with a ~which-key~ menu with the following bindings
                       "f"  'files
                       "ff" 'helm-find-files
                       "fc" 'find-configurations-file
+                      "fd" 'dired-sidebar-toggle-sidebar
                       "fs" 'sudo-edit
                       "g"  'git
                       "gb" 'git/blame
@@ -494,13 +508,17 @@ Hydrated bindings
   (require 'hydra)
   (require 'dash)
   (require 's)
+  (major-mode-hydra-bind clojurec-mode "Documentation"
+    ("C" helm-cider-cheatsheet "cheatsheet")
+    ("A" cider-apropos-documentation "apropos")
+    ("N" cider-browse-ns "namespace"))
   (major-mode-hydra-bind clojurec-mode "Connect"
     ("j" cider-jack-in "jack-in")
     ("J" cider-jack-in-clojurescript "jack-in-cljs")
     ("c" cider-connect "connect")
     ("R" cider-restart "restart")
+    ("r" cider-rotate-default-connection "rotate connection")
     ("Q" cider-quit "quit"))
-
   (major-mode-hydra-bind clojurec-mode "Load"
     ("k" cider-load-buffer "buffer")
     ("l" cider-load-file "file")
@@ -508,15 +526,15 @@ Hydrated bindings
     ("r" cider-refresh "reload"))
   :bind ("C-M-m" . major-mode-hydra))
 #+END_SRC
-                                                                                                                                   
+
  
 * Projects
   
 #+BEGIN_SRC emacs-lisp
-(use-package dumb-jump
-  :commands (dumb-jump-mode dumb-jump-go-other-window)
-  :config (setq dumb-jump-selector 'helm)
-  :bind (("C-<tab>" . dumb-jump-go-other-window)))
+(use-package smart-jump
+  :config
+  (smart-jump-setup-default-registers)
+  (smart-jump-register :modes '(clojure-mode)))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
@@ -603,7 +621,11 @@ longtime vim-user, I must say it's like editing super-powers that I
 can not leave behind.
 
 #+BEGIN_SRC emacs-lisp
-(use-package evil :init (evil-mode 1))
+(use-package evil
+  :bind (:map evil-normal-state-map
+              ("M-." . nil)
+              ("M-," . nil))
+  :init (evil-mode 1))
 
 (use-package evil-iedit-state :after evil)
 
@@ -611,10 +633,21 @@ can not leave behind.
 
 (use-package evil-ediff :after evil)
 
+(use-package evil-numbers
+  :straight t
+  :commands (evil-numbers/inc-at-pt evil-numbers/dec-at-pt)
+  :bind (("M-+" . evil-numbers/inc-at-pt)
+         ("M--" . evil-numbers/dec-at-pt)))
+
 (use-package evil-surround
   :after evil
   :init (global-evil-surround-mode 1))
+#+END_SRC
 
+[[https://github.com/bling/evil-visualstar][evil-visualstart]] allows star and hash-searches to be performed on a
+visual-selection
+
+#+BEGIN_SRC emacs-lisp
 (use-package evil-visualstar
   :after evil
   :config (setq evil-visualstar/persistent t)
@@ -646,10 +679,19 @@ can not leave behind.
   :commands (hs-show-all hs-hide-all)
   :diminish hideshow-mode
   :config (setq hs-hide-comments-when-hiding-all nil)
-  :init (add-hook 'prog-mode-hook 'hs-minor-mode)
-  :bind (:map hs-minor-mode-map
-              ("S-<tab>" . hs-show-all)
-              ("A-<tab>" . hs-hide-all)))
+  :init (add-hook 'prog-mode-hook 'hs-minor-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package ac-emoji
+  :config 
+  (add-hook 'markdown-mode-hook 'ac-emoji-setup)
+  (add-hook 'git-commit-mode-hook 'ac-emoji-setup)
+  (set-fontset-font
+   t 'symbol
+   (font-spec :family "Apple Color Emoji") nil 'prepend)
+  :init
+  (ac-emoji-setup))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
@@ -671,7 +713,19 @@ can not leave behind.
 (use-package saveplace
   :config (setq-default save-place t))
 #+END_SRC
-                                                                                          
+
+#+BEGIN_SRC emacs-lisp
+(use-package ialign
+  :commands (ialign)
+  :bind (("M-l" . ialign)))
+#+end_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package bool-flip
+  :commands (bool-flip-do-flip)
+  :bind (("C-c b" . bool-flip-do-flip)))
+#+END_SRC
+
  
 * Version Control
   
@@ -726,6 +780,7 @@ more versatile than the more popular ~git-gutter~.
   
 #+BEGIN_SRC emacs-lisp
 (use-package golden-ratio
+  :disabled
   :commands (golden-ratio golden-ratio-mode)
   :diminish golden-ratio-mode
   :config (add-hook 'post-command-hook 'golden-ratio)
@@ -754,43 +809,44 @@ more versatile than the more popular ~git-gutter~.
 (use-package all-the-icons
   :defer 1)
 
+(use-package dired-sidebar
+  :commands (dired-sidebar-toggle-sidebar)
+  :config (setq dired-sidebar-close-sidebar-on-file-open t))
+
+(use-package dired-subtree
+  :after dired-sidebar
+  :bind (:map dired-mode-map
+           ("i" . dired-subtree-toggle)))
+
 (use-package all-the-icons-dired
   :after all-the-icons
+  :commands (all-the-icons-dired-mode)
   :config (add-hook 'dired-mode-hook 'all-the-icons-dired-mode))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
-(use-package nord-theme
-  :init (load-theme 'nord t))
+(use-package doom-themes
+  :init 
+  (load-theme 'doom-dracula :no-confirm))
 
-(use-package flatui-theme
-  :disabled
-  :init (load-theme 'flatui t))
+(use-package nord-theme :defer)
 
-(use-package flatui-dark-theme
-  :disabled
-  :init (load-theme 'flatui-dark t))
+(use-package flatui-theme :defer)
 
-(use-package seti-theme
-  :disabled
-  :init
-  (load-theme 'seti t))
+(use-package flatui-dark-theme :defer)
 
-(use-package sublime-themes
-  :disabled
-  :init
-  ;; (load-theme 'brin t)
-  ;; (load-theme 'hickey t)
-  ;; (load-theme 'fogus t)
-  ;; (load-theme 'junio t)
-  )
+(use-package seti-theme :defer)
+
+(use-package sublime-themes :defer)
 
 (use-package material-theme
-  :disabled
+  :defer
   :config
   (custom-theme-set-faces 'material
-		  '(fringe ((t (:background "#181a26")))))
-  :init (load-theme 'material :no-confirm))
+      '(fringe ((t (:background "#181a26")))))
+  :init
+  ;; (load-theme 'material :no-confirm)
+  )
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -936,9 +992,8 @@ some languages it might cause some performance-issues, so be aware.
 
 (use-package flycheck-clojure
   :straight t
-  :defer t
-  :after (flycheck clojure-mode)
-  :init (flycheck-clojure-setup))
+  :after cider
+  :config (flycheck-clojure-setup))
 #+END_SRC
   
 Par-edit makes editing of s-expressions easier by keeping your
@@ -1080,23 +1135,25 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   :bind (:map cider-mode-map
               ("C-c f" . zprint))
   :config
-  (setq nrepl-log-messages t
-        nrepl-buffer-name-show-port t
-        cider-repl-pop-to-buffer-on-connect nil
+  (setq cider-auto-select-error-buffer t
+        cider-cljs-clojure-repl "clj -m cljs.main -Sdeps '{:deps {org.clojure/clojurescript {:mvn/version \"1.10.64\"}}}' -r"
+        cider-eldoc-display-context-dependent-info t
         cider-font-lock-dynamically '(macro core function var partial comp -> ->>)
         cider-overlays-use-font-lock t
-        cider-eldoc-display-context-dependent-info t
+        cider-overlays-use-font-lock t
+        cider-pprint-fn 'fipp
         cider-repl-display-help-banner t
-        cider-show-error-buffer t
-        cider-auto-select-error-buffer t
+        cider-repl-display-in-current-window t
         cider-repl-history-file "~/.eyre/cider-history"
-        cider-repl-wrap-history t
+        cider-repl-pop-to-buffer-on-connect nil
+        cider-repl-use-clojure-font-lock t
         cider-repl-use-pretty-printing t
-        cider-cljs-clojure-repl "clj -Sdeps '{:deps {org.clojure/clojurescript {:mvn/version \"1.10.64\"}}}' -m cljs.main -r"
-        cider-cljs-lein-repl "(do (require 'figwheel-sidecar.repl-api)
-                                  (figwheel-sidecar.repl-api/start-figwheel!)
-                                  (figwheel-sidecar.repl-api/cljs-repl))"
-        cider-pprint-fn 'fipp)
+        cider-repl-wrap-history t
+        cider-show-error-buffer t
+        nrepl-buffer-name-show-port nil
+        nrepl-hide-special-buffers t
+        nrepl-log-messages t
+        nrepl-prompt-to-kill-server-buffer-on-quit nil)
   :init
   (add-hook 'clojure-mode-hook 'use-symbols)
   (add-hook 'cider-mode-hook #'clojure-hook)
@@ -1123,7 +1180,9 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
         clojure-indent-style ':always-align
         initial-scratch-message nil)
   :init 
-  (add-hook 'clojure-mode-hook 'cider-format-before-save)
+  ;; Unfortunately, when using cider-format; point tends to move,
+  ;; which is super-annoying.
+  ;; (add-hook 'clojure-mode-hook 'cider-format-before-save)
   (add-hook 'clojure-mode-hook 'cider-mode))
 
 (use-package sotclojure
@@ -1136,7 +1195,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
    
 #+BEGIN_SRC emacs-lisp
 (use-package clj-refactor
-  :after cider-mode
+  :after cider
   :diminish clj-refactor-mode
   :config (progn
             (setq cljr-warn-on-eval nil
@@ -1306,37 +1365,37 @@ ${4:(defmethod $1 ::default [_] $7)}
 (defun org-mode-defaults ()
   (turn-on-auto-fill))
 
-(use-package org
+(use-package org-plus-contrib
+  :straight t
   :bind (("C-c c" . org-capture))
   :config
   (require 'ob-tangle)
   (require 'ox-latex)
-                                        ; (use-package org-habit)
+  (use-package ob-clojurescript)
   (load-library "find-lisp")
   (add-to-list 'org-latex-packages-alist '("" "minted"))
   (add-to-list 'org-latex-packages-alist '("" "listings"))
   (add-to-list 'org-latex-packages-alist '("" "color"))
-  (setq org-directory (expand-file-name "~/org")
-        org-default-notes-file (concat org-directory "/Notes.org")
+  (add-to-list 'org-latex-packages-alist '("" "xcolor" t))
+  (setq org-adapt-indentation nil
         org-agenda-files (find-lisp-find-files org-directory "\.org$")
         org-agenda-start-with-follow-mode t
-        org-hide-emphasis-markers t
-        org-ditaa-jar-path "/usr/local/bin/ditaa"
-        org-src-window-setup 'current-window
+        org-babel-clojure-backend 'cider
         org-confirm-babel-evaluate nil
+        org-default-notes-file (concat org-directory "/Notes.org")
+        org-directory (expand-file-name "~/org")
+        org-ditaa-jar-path "/usr/local/bin/ditaa"
         org-edit-src-content-indentation 0
-        org-src-tab-acts-natively t
-        org-src-fontify-natively t
-        org-latex-listings 'minted
-        org-export-with-smart-quotes t
         org-ellipsis "•••"
-        org-adapt-indentation nil
-        org-latex-logfiles-extensions (quote ("lof" "lot" "tex~" "aux" "idx" "log" "out" "toc" "nav" "snm" "vrb" "dvi" "fdb_latexmk" "blg" "brf" "fls" "entoc" "ps" "spl" "bbl"))
+        org-export-with-smart-quotes t
+        org-hide-emphasis-markers t
         org-latex-listings 'minted
-        org-latex-pdf-process
-        '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
-          "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
-          "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"))
+        org-latex-logfiles-extensions (quote ("lof" "lot" "tex~" "aux" "idx" "log" "out" "toc" "nav" "snm" "vrb" "dvi" "fdb_latexmk" "blg" "brf" "fls" "entoc" "ps" "spl" "bbl"))
+        org-latex-pdf-process '("xelatex -shell-escape -interaction nonstopmode %f" "xelatex -shell-escape -interaction nonstopmode %f")
+        org-src-fontify-natively t
+        org-src-preserve-indentation nil 
+        org-src-tab-acts-natively t
+        org-src-window-setup 'current-window)
   (org-babel-do-load-languages
    (quote org-babel-load-languages)
    (quote ((emacs-lisp . t)
@@ -1346,6 +1405,8 @@ ${4:(defmethod $1 ::default [_] $7)}
            (clojure . t)
            (css . t)
            (haskell . t)
+           (shell . t)
+           (python . t)
            (makefile . t))))
   (add-hook 'org-mode-hook 'org-mode-defaults))
 #+END_SRC
@@ -1440,7 +1501,8 @@ ${2:#+SUBTITLE:             $3}
 
 #+BEGIN_SRC emacs-lisp
 (use-package emmet-mode
-  :defer 1
+  :straight t
+  :commands emmet-mode
   :init (add-hook-to-modes '(sgml-mode-hook css-mode-hook) 'emmet-mode))
 #+END_SRC
 
