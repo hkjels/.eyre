@@ -71,6 +71,14 @@ To set up your own fork, you supply a recipe to ~straight.el~ like this:
                                  :repo "raxod502/el-patch")))
 #+END_EXAMPLE
 
+Sometimes a package depends on some external binary etc. This will
+extend use-package with the key ~:ensure-system-package~ where you can
+describe such dependencies.
+#+BEGIN_SRC emacs-lisp
+(use-package use-package-ensure-system-package
+  :straight t)
+#+END_SRC
+
  
 * Configuration Helpers
 
@@ -79,9 +87,9 @@ weighs it down. Starting emacs with ~EMACS_BENCHMARK~ set to true
 can be quite helpful in finding the culprit.
 #+BEGIN_SRC emacs-lisp
 (use-package benchmark-init
-  :when (not (eq nil (getenv "EMACS_BENCHMARK")))
+  :unless (eq nil (getenv "EMACS_BENCHMARK"))
   :config (benchmark-init/activate)
-  :init (add-hook 'after-init-hook #'benchmark-init/deactivate))
+  :hook (after-init . benchmark-init/deactivate))
 #+END_SRC  
 
 Use ~y~ and ~n~ instead of ~yes~ and ~no~ when answering silly questions.
@@ -158,10 +166,9 @@ certain events. Typically when emacs looses focus or you switch
 between buffers etc.
 #+BEGIN_SRC emacs-lisp
 (use-package super-save
-  :commands super-save-mode
-  :delight super-save-mode
+  :diminish super-save-mode
   :config (setq super-save-auto-save-when-idle t
-                auto-save-default nil)
+                super-save-idle-duration 1)
   :init (super-save-mode +1))
 #+END_SRC
 
@@ -235,7 +242,7 @@ between buffers etc.
 
 #+BEGIN_SRC emacs-lisp
 (use-package shell-pop
-  :defer 1
+  :commands shell-pop
   :config
   (setq shell-pop-shell-type (quote ("ansi-term" "*ansi-term*" (lambda nil (ansi-term shell-pop-term-shell)))))
   (setq shell-pop-term-shell "/usr/local/bin/bash")
@@ -269,7 +276,7 @@ don't end up with multiple instances of emacs running at a time.
 #+BEGIN_SRC emacs-lisp
 (use-package server
   :if window-system
-  :init (add-hook 'after-init-hook 'server-start t))
+  :hook (after-init . server-start))
 #+END_SRC
   
 Eyre boots directly into the agenda-view, so you can quickly jump to
@@ -439,7 +446,6 @@ with a ~which-key~ menu with the following bindings
   
 #+BEGIN_SRC emacs-lisp
 (use-package general
-  :defer 1
   :config
   (setq general-default-keymaps 'evil-normal-state-map)
   (general-define-key :prefix "SPC"
@@ -488,7 +494,6 @@ with a ~which-key~ menu with the following bindings
   
 #+BEGIN_SRC emacs-lisp
 (use-package which-key
-  :defer 1
   :diminish which-key-mode
   :config (which-key-setup-minibuffer)
   :init (which-key-mode))
@@ -538,36 +543,37 @@ Hydrated bindings
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
-(defun open-project-at ()
-  (cond ((file-exists-p (concat default-directory "/README*")) (find-file (concat default-directory "/README*")))
-        ((file-exists-p (concat default-directory "/.git")) (magit-status))
-        (t (projectile-find-file))))
+  (defun open-project-at ()
+    (progn
+     (when (file-exists-p (concat default-directory "/README*"))
+       (find-file (concat default-directory "/README*")))
+     (if (file-exists-p (concat default-directory "/.git"))
+	 (magit-status)
+       (projectile-find-file))))
 
-(use-package projectile
-  :straight t
-  :commands (projectile-mode projectile-dired projectile-shell projectile-find-file)
-  :diminish projectile-mode
-  :config (setq projectile-completion-system 'helm
-		            projectile-switch-project-action 'open-project-at)
-  :init (projectile-global-mode))
+  (use-package projectile
+    :straight t
+    :delight '(:eval (concat " " (projectile-project-name)))
+    :commands (projectile-mode projectile-dired projectile-shell projectile-find-file)
+    :config (setq projectile-completion-system 'helm
+			      projectile-switch-project-action 'open-project-at)
+    :init (projectile-global-mode))
 
-(use-package perspective
-  :straight (perspective :type git :host github :repo "hkjels/perspective-el" :branch "no-frame-local-vars"
-                              :upstream (:host github
-                                         :repo "nex3/perspective-el"))
-  :config (persp-mode t))
+  (use-package perspective
+    :straight (perspective :type git :host github :repo "hkjels/perspective-el" :branch "no-frame-local-vars"
+				:upstream (:host github
+					   :repo "nex3/perspective-el"))
+    :config (persp-mode t))
 
-(use-package persp-projectile
-  :straight (persp-projectile :type git :host github :repo "hkjels/persp-projectile" :branch "frame-perspective-hash"
-                              :upstream (:host github
-                                         :repo "bbatsov/persp-projectile"))
-  :after (perspective projectile))
+  (use-package persp-projectile
+    :straight (persp-projectile :type git :host github :repo "hkjels/persp-projectile" :branch "frame-perspective-hash"
+				:upstream (:host github
+					   :repo "bbatsov/persp-projectile"))
+    :after (perspective projectile))
 
-(use-package helm
-  :defer 1
-  :bind (("M-x" . helm-M-x))
-  :config
-  (progn
+  (use-package helm
+    :bind (("M-x" . helm-M-x))
+    :config
     (setq helm-quick-update t
 	  helm-candidate-number-limit 100
 	  helm-locate-command "mdfind -name %s %s"
@@ -578,27 +584,27 @@ Hydrated bindings
 	  helm-apropos-fuzzy-match t
 	  helm-buffers-fuzzy-matching t
 	  helm-recentf-fuzzy-match t)
-    (helm-autoresize-mode t)))
+    (helm-autoresize-mode t))
 
-(use-package helm-flx
-  :straight t
-  :init (helm-flx-mode +1))
+  (use-package helm-flx
+    :straight t
+    :init (helm-flx-mode +1))
 
-(use-package helm-projectile
-  :commands (helm-projectile-switch-project helm-projectile-find-file)
-  :init (helm-projectile-on))
+  (use-package helm-projectile
+    :commands (helm-projectile-switch-project helm-projectile-find-file)
+    :init (helm-projectile-on))
 
-(use-package ag
-  :commands (ag ag-project ag-regexp))
+  (use-package ag
+    :commands (ag ag-project ag-regexp))
 
-(use-package helm-ag
-  :after ag
-  :commands (helm-ag helm-ag-this-file))
+  (use-package helm-ag
+    :after ag
+    :commands (helm-ag helm-ag-this-file))
 
-(use-package avy
-  :commands (avy-goto-line avy-goto-char-2 avy-goto-word-1)
-  :bind (("M-g l" . avy-goto-line)
-	       ("M-g c" . avy-goto-char-2)))
+  (use-package avy
+    :commands (avy-goto-line avy-goto-char-2 avy-goto-word-1)
+    :bind (("M-g l" . avy-goto-line)
+		 ("M-g c" . avy-goto-char-2)))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
@@ -612,8 +618,7 @@ Hydrated bindings
 * Efficient Editing
   
 #+BEGIN_SRC emacs-lisp
-(use-package editorconfig
-  :defer 1)
+(use-package editorconfig)
 #+END_SRC
 
 Evil introduces modal-bindings to emacs, similar to that of vim. As a
@@ -655,6 +660,7 @@ visual-selection
 
 (use-package evil-commentary
   :after evil
+  :diminish evil-commentary-mode
   :config (evil-commentary-mode))
 #+END_SRC
   
@@ -675,23 +681,11 @@ visual-selection
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
-(use-package hideshow
-  :commands (hs-show-all hs-hide-all)
-  :diminish hideshow-mode
-  :config (setq hs-hide-comments-when-hiding-all nil)
-  :init (add-hook 'prog-mode-hook 'hs-minor-mode))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
 (use-package ac-emoji
-  :config 
-  (add-hook 'markdown-mode-hook 'ac-emoji-setup)
-  (add-hook 'git-commit-mode-hook 'ac-emoji-setup)
-  (set-fontset-font
-   t 'symbol
-   (font-spec :family "Apple Color Emoji") nil 'prepend)
-  :init
-  (ac-emoji-setup))
+  :hook ((markdown-mode . ac-emoji-setup)
+         (git-commit-mode . ac-emoji-setup))
+  :config (set-fontset-font t 'symbol (font-spec :family "Apple Color Emoji") nil 'prepend)
+  :init (ac-emoji-setup))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
@@ -738,7 +732,7 @@ of emacs. Usually happens when you switch branch etc.
 (add-hook 'dired-mode-hook 'auto-revert-mode)
 #+END_SRC
   
-Magit]] is pretty much the de-facto interface for git in Emacs and for
+Magit is pretty much the de-facto interface for git in Emacs and for
 good reasons. I've set it up so it suits my vim-mussles a little better.
 #+BEGIN_SRC emacs-lisp
 (use-package magit
@@ -783,7 +777,7 @@ more versatile than the more popular ~git-gutter~.
   :disabled
   :commands (golden-ratio golden-ratio-mode)
   :diminish golden-ratio-mode
-  :config (add-hook 'post-command-hook 'golden-ratio)
+  :hook (post-command . golden-ratio)
   :init (golden-ratio-mode 1))
 #+END_SRC
 
@@ -806,8 +800,7 @@ more versatile than the more popular ~git-gutter~.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package all-the-icons
-  :defer 1)
+(use-package all-the-icons)
 
 (use-package dired-sidebar
   :commands (dired-sidebar-toggle-sidebar)
@@ -821,9 +814,9 @@ more versatile than the more popular ~git-gutter~.
 (use-package all-the-icons-dired
   :after all-the-icons
   :commands (all-the-icons-dired-mode)
-  :config (add-hook 'dired-mode-hook 'all-the-icons-dired-mode))
+  :hook (dired-mode . all-the-icons-dired-mode))
 #+END_SRC
-  
+
 #+BEGIN_SRC emacs-lisp
 (use-package doom-themes
   :init 
@@ -881,8 +874,7 @@ of chrome, this pretty much disables all of it for MacOS.
 (show-paren-mode t)
 (set-frame-font "Fira Code")
 
-(use-package spinner
-  :defer 1)
+(use-package spinner)
 
 (use-package beacon
   :commands (beacon-mode)
@@ -890,7 +882,6 @@ of chrome, this pretty much disables all of it for MacOS.
   :config (beacon-mode t))
 
 (use-package anzu
-  :defer 1
   :diminish anzu-mode
   :config (global-anzu-mode t))
 
@@ -901,22 +892,18 @@ of chrome, this pretty much disables all of it for MacOS.
   
 #+BEGIN_SRC emacs-lisp
 (use-package linum-relative
-  :commands linum-relative-mode
-  :diminish linum-relative-mode
-  :init
-  (add-hook 'prog-mode-hook 'linum-relative-mode))
+  :delight
+  :hook prog-mode)
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
 (use-package rainbow-delimiters
-  :commands rainbow-delimiters-mode
   :diminish rainbow-delimiters-mode
-  :config (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
+  :hook prog-mode)
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package undo-tree
-  :defer 1
   :diminish undo-tree-mode
   :config (defalias 'redo 'undo-tree-redo)
   :init (global-undo-tree-mode 1))
@@ -930,40 +917,215 @@ of chrome, this pretty much disables all of it for MacOS.
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package telephone-line
-  :after perspective
-  :config 
-  (progn
-    (set-face-foreground 'persp-selected-face "SteelBlue4")
-    (setq projectile-mode-line
-          '(:eval (if (file-remote-p default-directory)
-                      " P"
-                    (format " P[%s]" (projectile-project-name))))
-          telephone-line-lhs
-          '((evil   . (telephone-line-evil-tag-segment))
-            (accent . (telephone-line-vc-segment
-                       telephone-line-erc-modified-channels-segment
-                       telephone-line-process-segment))
-            (nil    . (telephone-line-minor-mode-segment
-                       telephone-line-buffer-segment))))
-    (setq telephone-line-rhs
-          '((nil . (telephone-line-misc-info-segment))
-            (evil . (telephone-line-major-mode-segment))))
-    (setq telephone-line-primary-right-separator 'telephone-line-abs-left
-          telephone-line-secondary-right-separator 'telephone-line-abs-hollow-left)
-    (setq telephone-line-height 24
-          telephone-line-evil-use-short-tag t))
-  :init
-  (telephone-line-evil-config))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
 (use-package focus
   :commands focus-mode)
 #+END_SRC
                                                                                                                                                                                  
+** Modeline
+
+#+BEGIN_SRC emacs-lisp
+  (defconst modeline:blank " ")
+  (defconst modeline:blank2 (concat modeline:blank modeline:blank))
+  (defconst modeline:blank4 (concat modeline:blank2 modeline:blank2))
+  (defconst modeline:separator (propertize "»"))
+  (defconst modeline:separator-group (concat modeline:blank2 modeline:separator modeline:blank2))
+
+  (defconst modeline:symbol-directory-local
+    (propertize
+     (all-the-icons-octicon "dash")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-directory-remote
+    (propertize
+     (all-the-icons-octicon "sync")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-status
+    (propertize
+     (all-the-icons-octicon "info")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-up-to-date
+    (propertize
+     (all-the-icons-octicon "check")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-edited
+    (propertize
+     (all-the-icons-octicon "keyboard")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-needs-added
+    (propertize
+     (all-the-icons-octicon "pencil")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-needs-removed
+    (propertize
+     (all-the-icons-octicon "pencil")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-needs-conflict
+    (propertize
+     (all-the-icons-octicon "pencil")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-unergistered
+    (propertize
+     (all-the-icons-octicon "pencil")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-vc-branch
+    (propertize
+     (all-the-icons-octicon "git-branch")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-flycheck-no-issues
+    (propertize
+     (all-the-icons-octicon "check")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-flycheck-issues
+    (propertize
+     (all-the-icons-octicon "bug")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-flycheck-running
+    (propertize
+     (all-the-icons-octicon "sync")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-flycheck-errored
+    (propertize
+     (all-the-icons-octicon "alert")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-flycheck-interrupted
+    (propertize
+     (all-the-icons-octicon "alert")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-buffer-modified
+    (propertize
+     (all-the-icons-octicon "quote")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defconst modeline:symbol-buffer-locked
+    (propertize
+     (all-the-icons-octicon "lock")
+     'face `(:family ,(all-the-icons-octicon-family))
+     'display '(raise 0.10)))
+
+  (defun modeline:buffer-modified ()
+    (let ((indicator (format-mode-line "%*")))
+      (cond ((string= indicator "-") modeline:symbol-buffer-saved)
+	    ((string= indicator "*") modeline:symbol-buffer-modified)
+	    ((string= indicator "%") modeline:symbol-buffer-locked))))
+
+  (defun modeline:remote ()
+    (let ((indicator (format-mode-line "%@")))
+      (cond ((string= indicator "-") modeline:symbol-directory-local)
+	    ((string= indicator "@") modeline:symbol-directory-remote))))
+
+  (defun modeline:vc-enabled ()
+    (and
+     (not (null (buffer-file-name)))
+     (not (null (vc-state buffer-file-name)))))
+
+  (defun modeline:vc ()
+    (let* ((branch
+	    (mapconcat 'concat (cdr (split-string vc-mode "[:-]")) "-"))
+	   (status
+	    (vc-state buffer-file-name))
+	   (status-icon
+	    (cond
+	     ((eq status 'edited) modeline:symbol-vc-edited)
+	     ((eq status 'up-to-date) modeline:symbol-vc-up-to-date)
+	     (t modeline:symbol-vc-status)))
+	   (status-name
+	    (symbol-name status)))
+      (concat
+       ;; XXX: Status broken :(
+       ;; status-icon modeline:blank status-name modeline:blank
+       modeline:symbol-vc-branch modeline:blank branch)))
+
+  (defun modeline:flycheck-enabled ()
+    (not
+     (member flycheck-last-status-change
+	     '(no-checker not-checked suspicious))))
+
+  (defun modeline:flycheck ()
+    (let* ((flycheck-errors (flycheck-count-errors flycheck-current-errors))
+	   (num-issues
+	    (let-alist flycheck-errors
+	      (+ (or .warning 0) (or .error 0))))
+	   (num-errors (or (cdr (assoc 'error flycheck-errors)) 0))
+	   (num-warnings (or (cdr (assoc 'warning flycheck-errors)) 0))
+	   (status flycheck-last-status-change)
+	   (status-icon
+	    (cond
+	     ((and
+	       (eq status 'finished) (= num-issues 0))
+	      modeline:symbol-flycheck-no-issues)
+	     ((and
+	       (eq status 'finished) (> num-issues 0))
+	      modeline:symbol-flycheck-issues)
+	     ((eq status 'running) modeline:symbol-flycheck-running)
+	     ((eq status 'errored) modeline:symbol-flycheck-errored)
+	     ((eq status 'interrupted) modeline:symbol-flycheck-interrupted)))
+	   (status-message
+	    (cond
+	     ((and (eq status 'finished) (= num-issues 0)) "no issues")
+	     ((and (eq status 'finished) (> num-issues 0))
+	      (concat
+	       (propertize (format "%d" num-errors) 'face 'bold)
+	       " errors "
+	       (propertize (format "%d" num-warnings) 'face 'bold)
+	       " warnings"))
+	     ((eq status 'running) "running")
+	     ((eq status 'errored) "error")
+	     ((eq status 'interrupted) "interrupted"))))
+      (concat status-icon modeline:blank status-message)))
+
+  (defun modeline:major-mode ()
+    (downcase mode-name))
+
+  (let ((bg (face-attribute 'default :background)))
+    (custom-set-faces
+     `(mode-line ((t (:box (:line-width 1 :color ,bg)))))))
+
+  (set-default 'mode-line-format
+	       (list
+		modeline:blank2
+		'(:eval (when (modeline:flycheck-enabled) (concat (modeline:flycheck) modeline:blank2)))
+		;; modeline:buffer-modified
+		;; modeline:remote
+		mode-line-buffer-identification
+		modeline:separator-group
+		mode-line-modes
+		modeline:separator-group
+		'(:eval (when (modeline:vc-enabled) (modeline:vc)))))
+#+END_SRC
+
+
  
- * Language Support
+* Language Support
 
 #+BEGIN_SRC emacs-lisp
 (setq-default truncate-lines t)
@@ -982,12 +1144,12 @@ some languages it might cause some performance-issues, so be aware.
 #+BEGIN_SRC emacs-lisp
 (use-package flycheck
   :straight t
-  :defer 1
+  :diminish flycheck-mode
   :init (global-flycheck-mode))
 
 (use-package flycheck-pos-tip
   :straight t
-  :after (flycheck)
+  :after flycheck
   :init (flycheck-pos-tip-mode))
 
 (use-package flycheck-clojure
@@ -1037,25 +1199,24 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
 
 (use-package company-quickhelp
   :after company
-  :init (add-hook 'global-company-mode-hook #'company-quickhelp-mode))
+  :hook global-company-mode)
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
 (use-package flyspell
-  :disabled
   :commands flyspell-mode
   :diminish flyspell-mode
+  :ensure-system-package (aspell . "brew install aspell --with-lang-nb --without-lang-de --without-lang-es --without-lang-fr")
   :config (setq ispell-program-name "aspell"
                 ispell-extra-args '("--sug-mode=ultra"))
-  :init (progn
-          (add-hook 'text-mode-hook 'flyspell-mode)
-          (add-hook 'git-commit-mode-hook 'flyspell-mode)
-          (add-hook 'prog-mode-hook 'flyspell-prog-mode)))
+  :hook ((text-mode . flyspell-mode)
+         (git-commit-mode . flyspell-mode)
+         (prog-mode-hook . flyspell-prog-mode)))
 
 (use-package auto-dictionary
   :disabled
   :commands auto-dictionary-mode
-  :init (add-hook 'flyspell-mode-hook (lambda () (auto-dictionary-mode t))))
+  :hook (flyspell-mode . (lambda () (auto-dictionary-mode t))))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -1151,13 +1312,11 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
         cider-repl-wrap-history t
         cider-show-error-buffer t
         nrepl-buffer-name-show-port nil
-        nrepl-hide-special-buffers t
+        nrepl-hide-special-buffers nil
         nrepl-log-messages t
         nrepl-prompt-to-kill-server-buffer-on-quit nil)
+  :hook (clojure-mode . use-symbols)
   :init
-  (add-hook 'clojure-mode-hook 'use-symbols)
-  (add-hook 'cider-mode-hook #'clojure-hook)
-  (add-hook 'cider-repl-mode-hook #'clojure-hook)
   (global-prettify-symbols-mode t))
 #+END_SRC
 
@@ -1172,18 +1331,17 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   (add-hook 'before-save-hook 'cider-format-buffer t t))
 
 (use-package clojure-mode
-  :defer 1
   :commands (clojure-mode clojurescript-mode clojurec-mode)
   :mode ("\\.edn$" "\\.boot$")
   :config
   (setq clojure-align-forms-automatically t
         clojure-indent-style ':always-align
         initial-scratch-message nil)
-  :init 
+  :hook (clojure-mode . cider-mode)
   ;; Unfortunately, when using cider-format; point tends to move,
   ;; which is super-annoying.
   ;; (add-hook 'clojure-mode-hook 'cider-format-before-save)
-  (add-hook 'clojure-mode-hook 'cider-mode))
+  )
 
 (use-package sotclojure
   :after clojure-mode)
@@ -1215,8 +1373,7 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
                         (lambda (&rest _)
                           (yas-next-field)
                           (yas-next-field))))
-  :init
-  (add-hook 'clojure-mode-hook 'clj-refactor-mode))
+  :hook (clojure-mode . clj-refactor-mode))
 #+END_SRC
 
 
@@ -1311,7 +1468,7 @@ $0
 (re-frame/reg-sub
   ::$1
   (fn [db ${2:path}]
-    (get-in db $2))
+    (get-in db $2)))
 #+END_SRC
 
 #+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/log
@@ -1356,7 +1513,7 @@ ${4:(defmethod $1 ::default [_] $7)}
 
 ;(use-package flycheck-elm
 ;  :after (elm-mode flycheck)
-;  :init (add-hook 'flycheck-mode-hook #'flycheck-elm-setup))
+;  :hook (flycheck-mode . flycheck-elm-setup))
 #+END_SRC
    
 ** Org
@@ -1385,7 +1542,6 @@ ${4:(defmethod $1 ::default [_] $7)}
         org-default-notes-file (concat org-directory "/Notes.org")
         org-directory (expand-file-name "~/org")
         org-ditaa-jar-path "/usr/local/bin/ditaa"
-        org-edit-src-content-indentation 0
         org-ellipsis "•••"
         org-export-with-smart-quotes t
         org-hide-emphasis-markers t
@@ -1393,7 +1549,6 @@ ${4:(defmethod $1 ::default [_] $7)}
         org-latex-logfiles-extensions (quote ("lof" "lot" "tex~" "aux" "idx" "log" "out" "toc" "nav" "snm" "vrb" "dvi" "fdb_latexmk" "blg" "brf" "fls" "entoc" "ps" "spl" "bbl"))
         org-latex-pdf-process '("xelatex -shell-escape -interaction nonstopmode %f" "xelatex -shell-escape -interaction nonstopmode %f")
         org-src-fontify-natively t
-        org-src-preserve-indentation nil 
         org-src-tab-acts-natively t
         org-src-window-setup 'current-window)
   (org-babel-do-load-languages
@@ -1408,7 +1563,7 @@ ${4:(defmethod $1 ::default [_] $7)}
            (shell . t)
            (python . t)
            (makefile . t))))
-  (add-hook 'org-mode-hook 'org-mode-defaults))
+  :hook (org-mode . org-mode-defaults))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -1422,7 +1577,7 @@ ${4:(defmethod $1 ::default [_] $7)}
 
 #+BEGIN_SRC emacs-lisp
 (use-package ledger-mode
-  :defer 1)
+  :defer 5)
 #+END_SRC
 
 I use some languages from org-mode more than others and it's kind of
@@ -1444,17 +1599,14 @@ some code, so here's a few handy shortcuts
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package org-sticky-header
-  :defer t
-  :after org)
+(use-package org-sticky-header :after org)
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package org-bullets
-  :defer t
   :after org
   :config (setq org-bullets-bullet-list '("●"))
-  :init (add-hook 'org-mode-hook #'org-bullets-mode))
+  :hook (org-mode . org-bullets-mode))
 #+END_SRC
 
 I'd like to get started journaling everything that affects my
@@ -1491,7 +1643,13 @@ ${2:#+SUBTITLE:             $3}
 
 #+BEGIN_SRC emacs-lisp
 (use-package web-mode
-  :defer 1
+  :mode (("\\.html$"  . web-mode)
+         ("\\.xhtml$" . web-mode)
+         ("\\.jsx"    . web-mode)
+         ("\\.tmpl$"  . web-mode)
+         ("\\.tpl$"   . web-mode)
+         ("\\.php"    . web-mode)
+         ("\\.less$"  . css-mode))
   :config (setq web-mode-markup-indent-offset 2
                 web-mode-css-indent-offset 2
                 web-mode-code-indent-offset 2
@@ -1508,7 +1666,6 @@ ${2:#+SUBTITLE:             $3}
 
 #+BEGIN_SRC emacs-lisp
 (use-package js2-mode
-  :defer 1
   :mode ("\\.js$'" . js2-mode)
   :bind (:map js2-mode-map
               ("{" . paredit-open-curly)
@@ -1522,20 +1679,19 @@ ${2:#+SUBTITLE:             $3}
 
 (use-package ac-js2
   :after js2-mode
-  :init (progn
-          (add-hook 'js-mode-hook 'js2-minor-mode)
-          (add-hook 'js2-mode-hook 'ac-js2-mode)))
+  :hook ((js-mode . js2-minor-mode)
+         (js2-mode . ac-js2-mode)))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package prettier-js
-  :defer 1
-  :init (add-hook 'js2-mode-hook 'prettier-js-mode))
+  :after js2-mode
+  :hook (js2-mode . prettier-js-mode))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package company-tern
-  :defer 1
+  :after js2-mode
   :config (add-to-list 'company-backends 'company-tern))
 #+END_SRC
 
@@ -1625,4 +1781,4 @@ sprinkle it with some magical elisp-dust and you should be all set.
 
 ** TODO Make fancy-symbols compatible with formatters
 ** TODO When reloading Eyre, perspectives should be conserved
-** TODO Automatically open browser when connecting to a browser-REPL    
+** TODO Solve org-mode indentation once and for all
