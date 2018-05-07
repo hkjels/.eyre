@@ -36,12 +36,13 @@ tweak to the garbage-collector. These few lines will speed up
 boot-time quite a bit and will allow your emacs-client to run smoothly
 for weeks.
 #+BEGIN_SRC emacs-lisp
-(setq gc-cons-threshold 64000000
-      gc-cons-percentage 0.6
-      garbage-collection-messages t)
+(setq-default gc-cons-threshold (* 256 1024 1024)
+              gc-cons-percentage 0.6
+              garbage-collection-messages t)
 
-(add-hook 'after-init-hook #'(lambda () (setq gc-cons-threshold 800000
-                                         gc-cons-percentage 0.1)))
+(add-hook 'after-init-hook #'(lambda () (progn (setq gc-cons-threshold (* 1024 1024)
+                                                gc-cons-percentage 0.1)
+                                                (garbage-collect))))
 #+END_SRC
 
 To actually manage packages, I like the combination of [[https://github.com/jwiegley/use-package][use-package]] and
@@ -79,9 +80,8 @@ weighs it down. Starting emacs with ~EMACS_BENCHMARK~ set to true
 can be quite helpful in finding the culprit.
 #+BEGIN_SRC emacs-lisp
 (use-package benchmark-init
-  :when (not (eq nil (getenv "EMACS_BENCHMARK")))
-  :config (benchmark-init/activate)
-  :init (add-hook 'after-init-hook #'benchmark-init/deactivate))
+  :when (getenv "EMACS_BENCHMARK")
+  :hook (after-init . benchmark-init/deactivate))
 #+END_SRC  
 
 Use ~y~ and ~n~ instead of ~yes~ and ~no~ when answering silly questions.
@@ -779,6 +779,18 @@ more versatile than the more popular ~git-gutter~.
 * Aesthetics
   
 #+BEGIN_SRC emacs-lisp
+;; TODO Figure out why shackle doesn't work
+(use-package shackle
+  :straight t
+  :init
+  (setq hackle-default-alignment 'below
+        shackle-default-size 8
+        shackle-rules '(("^\\*eww" :regexp t :size 0.5 :select t :autokill t :noesc t)))
+  :config
+  (shackle-mode 1))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (use-package golden-ratio
   :disabled
   :commands (golden-ratio golden-ratio-mode)
@@ -789,7 +801,19 @@ more versatile than the more popular ~git-gutter~.
 
 #+BEGIN_SRC emacs-lisp
 (setq-default line-spacing 12
-              linum-relative-current-symbol "")
+              linum-relative-current-symbol ""
+              indent-tabs-mode nil)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(when window-system 
+  (blink-cursor-mode -1)
+  (scroll-bar-mode -1)
+  (tool-bar-mode -1))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(setq scroll-margin 10)
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
@@ -868,12 +892,7 @@ more versatile than the more popular ~git-gutter~.
 (global-set-key (kbd "<A-right>") 'enlarge-window-horizontally)
 #+END_SRC
   
-I like using a GUI-version of Emacs, but I firmly dislike the amount
-of chrome, this pretty much disables all of it for MacOS.
-  
 #+BEGIN_SRC emacs-lisp
-(scroll-bar-mode -1)
-(tool-bar-mode -1)
 (global-hl-line-mode)
 #+END_SRC
   
@@ -1140,7 +1159,6 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
         cider-eldoc-display-context-dependent-info t
         cider-font-lock-dynamically '(macro core function var partial comp -> ->>)
         cider-overlays-use-font-lock t
-        cider-overlays-use-font-lock t
         cider-pprint-fn 'fipp
         cider-repl-display-help-banner t
         cider-repl-display-in-current-window t
@@ -1364,9 +1382,14 @@ ${4:(defmethod $1 ::default [_] $7)}
 #+BEGIN_SRC emacs-lisp :exports both
 (defun org-mode-defaults ()
   (turn-on-auto-fill))
+  
+(use-package org
+  :hook
+  ((org-mode . org-sticky-header-mode)
+   (org-mode . org-bullets-mode)))
 
 (use-package org-plus-contrib
-  :straight t
+  :disabled
   :bind (("C-c c" . org-capture))
   :config
   (require 'ob-tangle)
@@ -1430,31 +1453,36 @@ tedious to write their full-name etc every time I want to blurb out
 some code, so here's a few handy shortcuts
 
 #+BEGIN_SRC emacs-lisp
-                                        ; Clojure-code
+; Clojure-code
 (add-to-list 'org-structure-template-alist
              (list "clj" "#+BEGIN_SRC clojure\n?\n#+END_SRC" "<src lang=\"clojure\">\n?\n</src>"))
 
-                                        ; Emacs-lisp-code
+; Emacs-lisp-code
 (add-to-list 'org-structure-template-alist
              (list "el" "#+BEGIN_SRC emacs-lisp\n?\n#+END_SRC" "<src lang=\"emacs-lisp\">\n?\n</src>"))
 
-                                        ; Haskell-code
+; Haskell-code
 (add-to-list 'org-structure-template-alist
              (list "hs" "#+BEGIN_SRC haskell\n?\n#+END_SRC" "<src lang=\"haskell\">\n?\n</src>"))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package org-sticky-header
-  :defer t
-  :after org)
+(use-package org-sticky-header :after org)
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package org-bullets
-  :defer t
   :after org
-  :config (setq org-bullets-bullet-list '("●"))
-  :init (add-hook 'org-mode-hook #'org-bullets-mode))
+  :config (setq org-bullets-bullet-list '("●")))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-src
+  :straight nil
+  :after org
+  :config
+  (setq org-edit-src-content-indentation 0
+        org-src-window-setup 'current-window))
 #+END_SRC
 
 I'd like to get started journaling everything that affects my
@@ -1610,15 +1638,29 @@ ${2:#+SUBTITLE:             $3}
 
 * Box-specific Preferences
 
-So Eyre does not have the layered goodness of Spacemacs and other
-similar run-commands, but you can override and add your own shit as
-long as you keep it locally. Touch a file at ~~/.eyre.local~ and
-sprinkle it with some magical elisp-dust and you should be all set.
+** MacOS defaults
+
 #+BEGIN_SRC emacs-lisp
-(let ((path (expand-file-name "~/.eyre.local")))
-  (when (file-exists-p path)
-      (load-file path)))
+(use-package emacs
+  :straight nil
+  :when (eq system-type 'darwin)
+  :config
+  (setq ns-command-modifier 'meta
+        ns-option-modifier 'super
+        ns-right-option-modifier nil))  
 #+END_SRC
+
+** Addition Local Configuration
+
+ So Eyre does not have the layered goodness of Spacemacs and other
+ similar run-commands, but you can override and add your own shit as
+ long as you keep it locally. Touch a file at ~~/.eyre.local~ and
+ sprinkle it with some magical elisp-dust and you should be all set.
+ #+BEGIN_SRC emacs-lisp
+ (let ((path (expand-file-name "~/.eyre.local")))
+   (when (file-exists-p path)
+     (load-file path)))
+ #+END_SRC
            
  
 * Notes of Improvement
