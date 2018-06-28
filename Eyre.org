@@ -19,35 +19,44 @@ an independent will
 
 * Introduction
   
-OK, so with the obligatory hipster-quote out of the way, we can get
-down to business. With Eyre, I'm trying to make my configuration as
-immediately obvious as possible. As you might have noticed, it's geared
-towards functional and literate programming first and foremost, but
-can easily be tweaked to whatever your liking.
-It's worth mentioning though that this is primarily my own
-configuration and not a layered solution that you can update without
-breakage.
-  
+With the obligatory hipster-quote out of the way, we can get down to
+business. With Eyre, I'm trying to make my configuration as
+immediately obvious as possible. That means it's somewhat verbose, but
+with the added benefit that others such as yourself could learn a
+thing or two.
+
+Emacs is so much more than an editor, it's an interactive
+lisp-environment. That means you can tweak every single detail with
+immidiate feedback. That makes it easier to learn and experiment
+with. It also means that you can more quickly extend it to your
+liking. Since Emacs is so easy to extend, there are quite a few
+extensions/packages available from a variety of repositories.  One
+such repository is [[https://melpa.org][melpa]]; just have a look if you have'nt already.
+
   
 * Package Management
   
-Before downloading and installing any packages, I highly recommend a
-tweak to the garbage-collector. These few lines will speed up
-boot-time quite a bit and will allow your emacs-client to run smoothly
-for weeks.
+Before downloading and installing packages, I like to insert a little
+tweak to the garbage-collector. This will; up the amount of memory to
+use when heavier tasks are set in motion and return to the default
+afterwards.
 #+BEGIN_SRC emacs-lisp
-(setq-default gc-cons-threshold (* 256 1024 1024)
-              gc-cons-percentage 0.6
-              garbage-collection-messages t)
+(defconst MB (* 1024 1024))
 
-(add-hook 'after-init-hook #'(lambda () (progn (setq gc-cons-threshold (* 1024 1024)
-                                                gc-cons-percentage 0.1)
-                                                (garbage-collect))))
+(defun increase-gc () (setq gc-cons-threshold (round (* 256 MB))))
+
+(defun decrease-gc () (setq gc-cons-threshold (round (* 0.8 MB))))
+
+(add-hook 'minibuffer-setup-hook #'increase-gc) 
+(add-hook 'minibuffer-exit-hook #'decrease-gc)
 #+END_SRC
 
 To actually manage packages, I like the combination of [[https://github.com/jwiegley/use-package][use-package]] and
-[[https://github.com/raxod502/straight.el][straight.el]].  Straight will clone all of the repositories, so you can
-actually make changes and push them to your own fork quite seamlessly.
+[[https://github.com/raxod502/straight.el][straight.el]]. ~Straight~ will clone all of the repositories that you
+specify, so you can actually make changes and push them to your own
+fork and ~use-package~ is a powerful macro that makes package-management
+and initialization declarative.
+
 #+BEGIN_SRC emacs-lisp
 (let ((bootstrap-file (concat user-emacs-directory "straight/repos/straight.el/bootstrap.el"))
       (bootstrap-version 3))
@@ -64,26 +73,73 @@ actually make changes and push them to your own fork quite seamlessly.
 (setq straight-use-package-by-default t)
 #+END_SRC
  
-To set up your own fork, you supply a recipe to ~straight.el~ like this:
+To set up your own fork of some package, you supply a recipe to
+~straight.el~ like this:
 #+BEGIN_EXAMPLE emacs-lisp
-(use-package el-patch
-  :straight (el-patch :type git :host github :repo "your-name/el-patch"
-                      :upstream (:host github
-                                 :repo "raxod502/el-patch")))
+(use-package el-patch :straight (el-patch :type git :host github :repo
+  "your-name/el-patch" :upstream (:host github :repo "raxod502/el-patch")))
 #+END_EXAMPLE
 
+Declaring packages in your config can be tedious, so to get a quick
+feel for a package you can use [[https://github.com/larstvei/Try][try]]. The packages downloaded with try
+will not be persisted to the next session.
+#+BEGIN_SRC emacs-lisp
+(use-package try :commands try)
+#+END_SRC
  
+
 * Configuration Helpers
+
+Below, I've listed directories and files that are important to Eyre,
+these are used throughtout the configuration.
+#+BEGIN_SRC emacs-lisp
+(defconst conf-dir (file-name-directory load-file-name))
+(defconst src-file (expand-file-name "Eyre.org" conf-dir))
+(defconst savefile-dir (expand-file-name "savefile-dir" conf-dir))
+(defconst backup-dir (expand-file-name "backup" conf-dir))
+#+END_SRC  
+
+Keep backup's, but keep them separate from the current project. That's
+just a really annoying default.
+#+BEGIN_SRC emacs-lisp
+(setq-default backup-directory-alist `((".*" . , backup-dir))
+              auto-save-file-name-transforms `((".*" ,backup-dir t))
+              auto-save-list-file-prefix backup-dir
+              create-lockfiles nil)
+#+END_SRC  
+
+The below preferences are some better-defaults in my opinion. Their
+names are quite self-explanatory I think.
+#+BEGIN_SRC emacs-lisp
+(setq-default large-file-warning-threshold (* 2 MB)
+              vc-follow-symlinks t
+              delete-by-moving-to-trash t
+              kill-do-not-save-duplicates t
+              eshell-banner-message ""
+              require-final-newline nil)
+#+END_SRC
 
 From time and again, my configuration accumulate some cruft that
 weighs it down. Starting emacs with ~EMACS_BENCHMARK~ set to true
-can be quite helpful in finding the culprit.
+can be helpful in finding the culprit.
 #+BEGIN_SRC emacs-lisp
 (use-package benchmark-init
-  :when (getenv "EMACS_BENCHMARK")
-  :hook (after-init . benchmark-init/deactivate))
-#+END_SRC  
+  :unless (eq nil (getenv "EMACS_BENCHMARK"))
+  :init (benchmark-init/activate)
+  :hook ((after-init . benchmark-init/deactivate)
+         (emacs-startup . benchmark-init/show-durations-tabulated)))
+#+END_SRC
 
+With [[https://www.emacswiki.org/emacs/DelightedModes][delight]] you can customize how modes are displayed in the
+modeline.  It's worth noting, that it adds a ~:delight~ keyword to
+~use-package~, for easier usage.
+#+BEGIN_SRC emacs-lisp
+(use-package delight
+  :config
+  (delight '((eldoc-mode)
+             (rainbow-mode))))
+#+END_SRC
+ 
 Use ~y~ and ~n~ instead of ~yes~ and ~no~ when answering silly questions.
 #+BEGIN_SRC emacs-lisp
 (fset 'yes-or-no-p 'y-or-n-p)
@@ -96,8 +152,10 @@ currently editing to get a clean slate.
   "Kill all other buffers than the current."
   (interactive)
   (mapc 'kill-buffer
-	(delq (current-buffer)
-	      (remove-if-not 'buffer-file-name (buffer-list)))))
+        (delq (current-buffer)
+              (remove-if-not 'buffer-file-name (buffer-list)))))
+
+(bind-key "C-x K" 'kill-other-buffers)
 #+END_SRC
 
 If you ask me, editing as sudo should have been part of the stack of
@@ -112,14 +170,50 @@ emacs native commands, but hey..
   (interactive "P")
   (let ((cursor-position (point)))
     (if (or arg (not buffer-file-name))
-	(find-file (concat "/sudo:root@localhost:"
-			   (ido-read-file-name "Find file(as root): ")))
+        (find-file (concat "/sudo:root@localhost:"
+                           (ido-read-file-name "Find file(as root): ")))
       (find-alternate-file (concat "/sudo:root@localhost:" buffer-file-name)))
     (goto-char cursor-position)))
 #+END_SRC
 
-I haven't needed [[https://github.com/lewang/command-log-mode][command-log-mode]] that much, but it might come in
-handy if I ever need to screencast a package I've made.
+I've added this little helper-function to be able to quickly jump to
+this configuration-file.
+#+BEGIN_SRC emacs-lisp
+(defun find-configurations-file ()
+  "Find Eyre's configuration-file."
+  (interactive)
+  (find-file src-file))
+#+END_SRC
+
+When executing ~exit~ in a terminal, the terminal-buffer will normally
+remain on screen, this snippet will exit properly.
+#+BEGIN_SRC emacs-lisp
+(defun kill-term-buffer ()
+  "Kill terminal-buffer upon quitting"
+  (let* ((buff (current-buffer))
+         (proc (get-buffer-process buff)))
+    (set-process-sentinel
+     proc
+     `(lambda (process event)
+        (if (string= event "finished\n")
+            (kill-buffer ,buff))))))
+
+(add-hook 'term-exec-hook 'kill-term-buffer)
+#+END_SRC
+
+[[https://github.com/bbatsov/super-save][Super-save]] will automatically persist your buffers to files upon
+certain events. Typically when emacs looses focus or you switch
+between buffers etc.
+#+BEGIN_SRC emacs-lisp
+(use-package super-save
+  :delight ""
+  :config (setq super-save-auto-save-when-idle t
+                super-save-idle-duration 1)
+  :init (super-save-mode +1))
+#+END_SRC
+
+I haven't needed [[https://github.com/lewang/command-log-mode][command-log-mode]] yet, but it might come in
+handy if I'm ever going to screencast some emacs-usage.
 #+BEGIN_SRC emacs-lisp
 (use-package command-log-mode
   :commands (command-log-mode clm/toggle-command-log-buffer))
@@ -137,6 +231,7 @@ asynchronously. You can use it to byte-compile Eyre with a little
 performance-boost.
 #+BEGIN_SRC emacs-lisp
 (use-package async
+  :disabled
   :commands (dired-async-mode async-bytecomp-package-mode)
   :config (setq async-bytecomp-allowed-packages '(all))
   :init 
@@ -144,111 +239,11 @@ performance-boost.
   (dired-async-mode 1)
   (async-bytecomp-package-mode 1))
 #+END_SRC
-  
-Whenever you'd like to test a package, you can use ~try~. Try will
-download and run the package, but it will not be persisted to your
-next session. Give it a try 😝
-#+BEGIN_SRC emacs-lisp
-(use-package try
-  :commands try)
-#+END_SRC
-
-[[https://github.com/bbatsov/super-save][Super-save]] will automatically persist your buffers to files upon
-certain events. Typically when emacs looses focus or you switch
-between buffers etc.
-#+BEGIN_SRC emacs-lisp
-(use-package super-save
-  :commands super-save-mode
-  :delight super-save-mode
-  :config (setq super-save-auto-save-when-idle t
-                auto-save-default nil)
-  :init (super-save-mode +1))
-#+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(defun add-hook-to-modes (modes hook)
-  (dolist (mode modes)
-    (add-hook (intern (concat (symbol-name mode) "-mode-hook"))
-	      hook)))
-#+END_SRC
-  
- 
-#+BEGIN_SRC emacs-lisp
-(defconst src-file (expand-file-name "~/.eyre/Eyre.org"))
-(defconst conf-dir (file-name-directory load-file-name))
-(defconst savefile-dir (expand-file-name "savefile-dir" conf-dir))
-(defconst backup-dir (expand-file-name "backup" conf-dir))
-(setq backup-directory-alist `((".*" . , backup-dir))
-      create-lockfiles nil
-      auto-save-file-name-transforms `((".*" ,backup-dir t))
-      auto-save-list-file-prefix backup-dir)
-(setq large-file-warning-threshold 100000000)
-#+END_SRC  
-
-#+BEGIN_SRC emacs-lisp
-(use-package exec-path-from-shell
-  :commands exec-path-from-shell-initialize
-  :config (exec-path-from-shell-initialize))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(prefer-coding-system 'utf-8-unix)
-(set-language-environment "utf-8")
-(set-selection-coding-system 'utf-8)
-(setq locale-coding-system 'utf-8
-      file-name-coding-system 'utf-8-unix)
-(setq-default buffer-file-coding-system 'utf-8-unix)
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(defun find-configurations-file ()
-  "Find Eyre's configuration-file."
-  (interactive)
-  (find-file src-file))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(defun kill-term-buffer ()
-  "Kill terminal-buffer upon quitting"
-  (let* ((buff (current-buffer))
-         (proc (get-buffer-process buff)))
-    (set-process-sentinel
-     proc
-     `(lambda (process event)
-        (if (string= event "finished\n")
-            (kill-buffer ,buff))))))
-
-(add-hook 'term-exec-hook 'kill-term-buffer)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(setq delete-by-moving-to-trash t)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package diminish :straight t)
-(use-package delight :straight t)
+(use-package tldr)
 #+END_SRC
  
-  
-* Terminal
-
-#+BEGIN_SRC emacs-lisp
-(use-package shell-pop
-  :defer 1
-  :config
-  (setq shell-pop-shell-type (quote ("ansi-term" "*ansi-term*" (lambda nil (ansi-term shell-pop-term-shell)))))
-  (setq shell-pop-term-shell "/usr/local/bin/bash")
-  (shell-pop--set-shell-type 'shell-pop-shell-type shell-pop-shell-type))
-#+END_SRC
-          
- 
-* Help
-
-#+BEGIN_SRC emacs-lisp
-(use-package tldr :commands tldr)
-#+END_SRC
-
 
 * Startup
   
@@ -256,364 +251,222 @@ between buffers etc.
 (setq inhibit-startup-screen t
       inhibit-startup-message t
       initial-scratch-message ""
-      initial-major-mode 'org-mode
       inhibit-startup-echo-area-message t
-      load-prefer-newer t)
-#+END_SRC
-  
-By running ~emacs~ as a server, we can throw stuff at it from an
-external command-line by executing ~emacsclient "path"~. I recommend
-having an alias like: ~alias emacs="emacsclient -a '' -c "~, so that you
-don't end up with multiple instances of emacs running at a time.
-  
-#+BEGIN_SRC emacs-lisp
-(use-package server
-  :if window-system
-  :init (add-hook 'after-init-hook 'server-start t))
+      load-prefer-newer t
+      initial-major-mode 'org-mode)
 #+END_SRC
   
 Eyre boots directly into the agenda-view, so you can quickly jump to
 the task of the day. Getting comfortable with setting up an agenda will
-make you more productive.
+make you more productive. So don't fret the agenda.
+
+#+BEGIN_SRC emacs-lisp
+(use-package page-break-lines)
+(use-package dashboard
+  :after page-break-lines
+  :init  (dashboard-setup-startup-hook)
+  :config (setq dashboard-items '((agenda . 5)
+                                  (projects . 5))
+                dashboard-startup-banner (expand-file-name "eyre_logo.png" conf-dir)
+                dashboard-banner-logo-title ""))
+#+END_SRC
+
+
+* Bindings
   
 #+BEGIN_SRC emacs-lisp
-(defun agenda ()
-  (interactive)
-  (org-agenda-list)
-  (delete-other-windows))
-
-(add-hook 'after-init-hook 'agenda)
+(use-package which-key
+  :delight ""
+  :init (which-key-mode)
+  :config (which-key-setup-minibuffer))
 #+END_SRC
-                                    
- 
-* Navigation
 
+#+BEGIN_SRC emacs-lisp
+(use-package general
+  :init
+  (general-evil-setup t)
+  :config
+  (setq general-default-keymaps 'evil-normal-state-map)
+  (general-define-key :prefix "SPC"
+                      "SPC" 'avy-goto-char-timer
+                      "'" 'projectile-run-eshell
+                      "bs" 'ivy-switch-buffer
+                      "fc" 'find-configurations-file
+                      "gs" 'magit-status
+                      "pf" 'counsel-projectile-find-file
+                      "ps" 'counsel-projectile-switch-project
+                      "p/" 'counsel-projectile-ripgrep))
+#+END_SRC
+
+
+* Working with text & code
+
+** Navigation
+
+I'm very much a proponent of mostly using the keyboard, as it does
+increase efficieny. But a lot of times I need to grok some already
+existing code-base and doing so, I like to lean back, read and
+navigate mostly using mouse-scroll.
+#+BEGIN_SRC emacs-lisp
+(xterm-mouse-mode t)
+#+END_SRC
+
+It's also useful both when editing and reading, to be able to narrow
+into a piece of code without surrounding distractions.
+#+BEGIN_SRC emacs-lisp
+(put 'narrow-to-region 'disabled nil)
+#+END_SRC
+
+Hitting ~C-c n~ I can quicly narrow and widen to the selected region; ahhh...
 Found this when googling https://gist.github.com/mwfogleman/95cc60c87a9323876c6c
 #+BEGIN_SRC emacs-lisp
 (defun narrow-or-widen-dwim ()
   "If the buffer is narrowed, it widens. Otherwise, it narrows to region, or Org subtree."
   (interactive)
   (cond ((buffer-narrowed-p) (widen))
-	((region-active-p) (narrow-to-region (region-beginning) (region-end)))
-	((equal major-mode 'org-mode) (org-narrow-to-subtree))
-	(t (error "Please select a region to narrow to"))))
+        ((region-active-p) (narrow-to-region (region-beginning) (region-end)))
+        ((equal major-mode 'org-mode) (org-narrow-to-subtree))
+        (t (error "Please select a region to narrow to"))))
 
 (bind-key "C-c n" 'narrow-or-widen-dwim)
 #+END_SRC
 
-Enable mouse-support
 #+BEGIN_SRC emacs-lisp
-(xterm-mouse-mode t)
-#+END_SRC
-
-Narrow to region is turned off by default, but I quite like the
-concept of narrow and widen, so I like to force it on.
-#+BEGIN_SRC emacs-lisp
-(put 'narrow-to-region 'disabled nil)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package rg
-  :commands rg)
-#+END_SRC
-
-Allways follow symlinks
-#+BEGIN_SRC emacs-lisp
-(setq vc-follow-symlinks t)
-#+END_SRC
-
-
-* Menues
-  
-** Prefix-commands
-   
-#+BEGIN_SRC emacs-lisp
-(define-prefix-command 'REPL)
-(define-prefix-command 'buffers)
-(define-prefix-command 'files)
-(define-prefix-command 'git)
-(define-prefix-command 'history)
-(define-prefix-command 'projects)
-(define-prefix-command 'toggle)
-(define-prefix-command 'window)
-#+END_SRC
-   
-** Aliases
-   
-Below is a list of aliases that makes it arguably easier to grok the
-commands true purpose.
-/Note that only commands without arguments will be possible to alias this way/
-
-#+NAME: aliases
-| alias                     | original                        |
-|---------------------------+---------------------------------|
-| buffers/kill              | kill-buffer                     |
-| buffers/kill-other        | kill-other-buffers              |
-| buffers/previous          | switch-to-prev-buffer           |
-| buffers/list              | helm-mini                       |
-| projects/find-file        | projectile-find-file            |
-| projects/search           | helm-projectile-ag              |
-| projects/last-search      | helm-resume                     |
-| projects/switch           | projectile-persp-switch-project |
-| window/kill               | persp-kill                      |
-| window/rename             | persp-rename                    |
-| window/switch             | persp-switch                    |
-| window/switch-to-last     | persp-switch-last               |
-| window/zoom               | text-scale-adjust               |
-| window/split-vertically   | split-window-right              |
-| window/split-horizontally | split-window-below              |
-| toggle/fullscreen         | toggle-frame-fullscreen         |
-| git/status                | magit-status                    |
-| git/init                  | magit-init                      |
-| git/log                   | magit-log-popup                 |
-| git/diff                  | magit-diff-popup                |
-| git/checkout              | magit-checkout                  |
-| git/blame                 | magit-blame                     |
-| git/pull                  | magit-pull                      |
-| terminal                  | shell-pop                       |
-
-Massage the table above into usable commands
-#+BEGIN_SRC emacs-lisp :var aliases=aliases
-(dolist (als (cdr aliases))
-  (when (listp als)
-    (defalias (intern (car als)) (intern (cadr als)))))
-#+END_SRC
-
-Some additional "aliases" that are interactive
-
-#+BEGIN_SRC emacs-lisp
-(defun buffers/scratch ()
-  "Switch to existing or create a new scratch-buffer."
-  (interactive)
-  (switch-to-buffer-other-window (get-buffer-create "*scratch*")))
-#+END_SRC
-                                                                
-
-* Bindings                                                       :cheatsheet:
-
-The global prefix-key is ~SPC~, after hitting space, you'll be presented
-with a ~which-key~ menu with the following bindings
-
-| Key-binding | Command                      |
-|-------------+------------------------------|
-| SPC         | avy-goto-word-1              |
-| '           | terminal                     |
-| /           | helm-resume                  |
-| a           | agenda                       |
-| b           | buffers                      |
-| bp          | buffers/previous             |
-| bb          | buffers/list                 |
-| bk          | buffers/kill                 |
-| bo          | buffers/kill-other           |
-| bs          | buffers/scratch              |
-| f           | files                        |
-| ff          | helm-find-files              |
-| fc          | find-configurations-file     |
-| fd          | dired-sidebar-toggle-sidebar |
-| fs          | sudo-edit                    |
-| g           | git                          |
-| gb          | git/blame                    |
-| gi          | git/init                     |
-| gl          | git/log                      |
-| gs          | git/status                   |
-| gd          | git/diff                     |
-| gc          | git/checkout                 |
-| gp          | git/pull                     |
-| h           | history                      |
-| hu          | undo-tree-visualize          |
-| hk          | helm-show-kill-ring          |
-| r           | REPL                         |
-| p           | projects                     |
-| p/          | projects/search              |
-| pf          | projects/find-file           |
-| ps          | projects/switch              |
-| tf          | toggle/fullscreen            |
-| w           | window                       |
-| ws          | window/switch                |
-| wr          | window/rename                |
-| wl          | window/switch-to-last        |
-| wk          | window/kill                  |
-| wz          | window/zoom                  |
-| w           | window/split-vertically      |
-| w-          | window/split-horizontally    |
-  
-#+BEGIN_SRC emacs-lisp
-(use-package general
-  :defer 1
+(use-package avy
+  :commands (avy-goto-char-timer avy-goto-line avy-goto-word-1)
+  :bind (("M-g c" . avy-goto-char-timer)
+         ("M-g l" . avy-goto-line)
+         ("M-g w" . avy-goto-word-1))
   :config
-  (setq general-default-keymaps 'evil-normal-state-map)
-  (general-define-key :prefix "SPC"
-                      "SPC" 'avy-goto-word-1
-                      "'"  'terminal
-                      "/"  'helm-resume
-                      "a"  'agenda
-                      "b"  'buffers
-                      "bp" 'buffers/previous
-                      "bb" 'buffers/list
-                      "bk" 'buffers/kill
-                      "bo" 'buffers/kill-other
-                      "bs" 'buffers/scratch
-                      "f"  'files
-                      "ff" 'helm-find-files
-                      "fc" 'find-configurations-file
-                      "fd" 'dired-sidebar-toggle-sidebar
-                      "fs" 'sudo-edit
-                      "g"  'git
-                      "gb" 'git/blame
-                      "gi" 'git/init
-                      "gl" 'git/log
-                      "gs" 'git/status
-                      "gd" 'git/diff
-                      "gc" 'git/checkout
-                      "h"  'history
-                      "hu" 'undo-tree-visualize
-                      "hk" 'helm-show-kill-ring
-                      "r"  'REPL
-                      "p"  'projects
-                      "p/" 'projects/search
-                      "pf" 'projects/find-file
-                      "ps" 'projects/switch
-                      "tf" 'toggle/fullscreen
-                      "w"  'window
-                      "ws" 'window/switch
-                      "wr" 'window/rename
-                      "wl" 'window/switch-to-last
-                      "wk" 'window/kill
-                      "wz" 'window/zoom
-                      "w|" 'window/split-vertically
-                      "w-" 'window/split-horizontally)
-  :init
-  (general-evil-setup t))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(use-package which-key
-  :defer 1
-  :diminish which-key-mode
-  :config (which-key-setup-minibuffer)
-  :init (which-key-mode))
-#+END_SRC 
-  
-Hydrated bindings
-#+BEGIN_SRC emacs-lisp
-(use-package hydra :straight t)
-(use-package dash :straight t)
-(use-package s :straight t)
-
-(use-package major-mode-hydra
-  :straight (major-mode-hydra :type git :host github :repo "hkjels/major-mode-hydra.el"
-                              :upstream (:host github
-                                         :repo "jerrypnz/major-mode-hydra.el"))
-  :config 
-  (require 'hydra)
-  (require 'dash)
-  (require 's)
-  (major-mode-hydra-bind clojurec-mode "Documentation"
-    ("C" helm-cider-cheatsheet "cheatsheet")
-    ("A" cider-apropos-documentation "apropos")
-    ("N" cider-browse-ns "namespace"))
-  (major-mode-hydra-bind clojurec-mode "Connect"
-    ("j" cider-jack-in "jack-in")
-    ("J" cider-jack-in-clojurescript "jack-in-cljs")
-    ("c" cider-connect "connect")
-    ("R" cider-restart "restart")
-    ("r" cider-rotate-default-connection "rotate connection")
-    ("Q" cider-quit "quit"))
-  (major-mode-hydra-bind clojurec-mode "Load"
-    ("k" cider-load-buffer "buffer")
-    ("l" cider-load-file "file")
-    ("L" cider-load-all-project-ns "all-ns")
-    ("r" cider-refresh "reload"))
-  :bind ("C-M-m" . major-mode-hydra))
+  (setq avy-style 'de-bruijn))
 #+END_SRC
 
- 
-* Projects
-  
 #+BEGIN_SRC emacs-lisp
-(use-package smart-jump
-  :config
-  (smart-jump-setup-default-registers)
-  (smart-jump-register :modes '(clojure-mode)))
+(use-package ivy
+  :straight t
+  :delight ""
+  :config (setq ivy-use-virtual-buffers t
+                ivy-initial-inputs-alist nil)
+  :init (ivy-mode 1))
+
+(use-package wgrep
+  :straight t
+  :config (setq wgrep-change-readonly-file t
+                wgrep-enable-key "e"))
+
+(use-package historian
+  :straight t
+  :commands (historian-mode)
+  :after ivy
+  :config (historian-mode +1))
+
+(use-package ivy-historian
+  :straight t
+  :commands (ivy-historian-mode)
+  :after (ivy historian)
+  :config (ivy-historian-mode +1))
+
+(use-package swiper
+  :straight t
+  :after ivy
+  :bind ("C-s" . swiper))
+
+;; TODO Make wgrep work with ivy
+;; TODO M-x should start out blank
+;; Stolen from spacemacs
+;; (defun counsel-edit ()
+;;   (interactive)
+;;   (run-with-idle-timer 0 nil 'ivy-wgrep-change-to-wgrep-mode))
+
+(use-package counsel
+  :straight t
+  :after ivy
+  :bind (("M-x" . counsel-M-x)
+         ;; ("C-c C-e" . counsel-edit)
+         ("C-h v" . counsel-describe-variable)
+         ("C-h f" . counsel-describe-function))
+  :config (setq counsel-grep-base-command
+                "rg -i -M 120 --no-heading --line-number --color never '%s' %s"))
+
+   (use-package helpful
+     :straight t)
+
+   (use-package counsel-projectile
+     :straight t
+     :after counsel)
+
+(use-package prescient
+  :config (prescient-persist-mode +1))
+
+(use-package ivy-prescient
+  :after (prescient ivy)
+  :config (ivy-prescient-mode +1))
+
+(use-package company-prescient
+  :after (prescient company)
+  :config (company-prescient-mode +1))
 #+END_SRC
-  
+
+*** Projects
+
+#+BEGIN_SRC emacs-lisp
+(use-package ripgrep
+  :straight t
+  :when (executable-find "rg")
+  :commands (ripgrep-regexp))
+
+(use-package ag
+  :straight t
+  :commands (ag ag-project ag-regexp))
+#+END_SRC
+
+Navigating within projects can be achieved with [[https://projectile.readthedocs.io/en/latest/][projectile]].
 #+BEGIN_SRC emacs-lisp
 (defun open-project-at ()
-  (cond ((file-exists-p (concat default-directory "/README*")) (find-file (concat default-directory "/README*")))
-        ((file-exists-p (concat default-directory "/.git")) (magit-status))
-        (t (projectile-find-file))))
+  (progn
+    (find-file (concat default-directory "/README*") t)
+    (if (file-exists-p (concat default-directory "/.git"))
+        (magit-status)
+      (projectile-find-file))))
 
 (use-package projectile
-  :straight t
-  :commands (projectile-mode projectile-dired projectile-shell projectile-find-file)
-  :diminish projectile-mode
-  :config (setq projectile-completion-system 'helm
-		            projectile-switch-project-action 'open-project-at)
+  :delight ""
+  :commands (projectile-mode projectile-dired projectile-shell projectile-find-file projectile-ripgrep)
+  :config (setq projectile-switch-project-action 'open-project-at
+                projectile-completion-system 'ivy)
   :init (projectile-global-mode))
+#+END_SRC
 
+And jumping between projects can be achieved with [[https://github.com/bbatsov/persp-projectile][perspective]].
+#+BEGIN_SRC emacs-lisp
 (use-package perspective
-  :straight (perspective :type git :host github :repo "hkjels/perspective-el" :branch "no-frame-local-vars"
-                              :upstream (:host github
-                                         :repo "nex3/perspective-el"))
+  :delight ""
+  :straight (perspective :type git
+                         :host github
+                         :repo "hkjels/perspective-el"
+                         :branch "no-frame-local-vars"
+                         :upstream (:host github :repo "nex3/perspective-el"))
   :config (persp-mode t))
 
 (use-package persp-projectile
-  :straight (persp-projectile :type git :host github :repo "hkjels/persp-projectile" :branch "frame-perspective-hash"
-                              :upstream (:host github
-                                         :repo "bbatsov/persp-projectile"))
+  :straight (persp-projectile :type git
+                              :host github
+                              :repo "hkjels/persp-projectile"
+                              :branch "frame-perspective-hash"
+                              :upstream (:host github :repo "bbatsov/persp-projectile"))
   :after (perspective projectile))
+#+END_SRC
 
-(use-package helm
-  :defer 1
-  :bind (("M-x" . helm-M-x))
-  :config
-  (progn
-    (setq helm-quick-update t
-	  helm-candidate-number-limit 100
-	  helm-locate-command "mdfind -name %s %s"
-	  helm-ff-skip-boring-files t
-	  helm-autoresize-min-height 10
-	  helm-M-x-fuzzy-match t
-	  helm-mode-fuzzy-match t
-	  helm-apropos-fuzzy-match t
-	  helm-buffers-fuzzy-matching t
-	  helm-recentf-fuzzy-match t)
-    (helm-autoresize-mode t)))
+** Efficient Editing
 
-(use-package helm-flx
-  :straight t
-  :init (helm-flx-mode +1))
-
-(use-package helm-projectile
-  :commands (helm-projectile-switch-project helm-projectile-find-file)
-  :init (helm-projectile-on))
-
-(use-package ag
-  :commands (ag ag-project ag-regexp))
-
-(use-package helm-ag
-  :after ag
-  :commands (helm-ag helm-ag-this-file))
-
-(use-package avy
-  :commands (avy-goto-line avy-goto-char-2 avy-goto-word-1)
-  :bind (("M-g l" . avy-goto-line)
-	       ("M-g c" . avy-goto-char-2)))
+Show key-stroke in minibuffer pronto
+#+BEGIN_SRC emacs-lisp
+(setq echo-keystrokes 0.02)
 #+END_SRC
   
+Behave nicely amongst other editors
 #+BEGIN_SRC emacs-lisp
-;(use-package asana
-;  :load-path "~/.eyre/packages/asana.el"
-;  :commands asana-tasklist
-;  :bind (("C-c a" . asana-tasklist)))
-#+END_SRC
-                                                                                 
- 
-* Efficient Editing
-  
-#+BEGIN_SRC emacs-lisp
-(use-package editorconfig
-  :defer 1)
+(use-package editorconfig)
 #+END_SRC
 
 Evil introduces modal-bindings to emacs, similar to that of vim. As a
@@ -622,6 +475,7 @@ can not leave behind.
 
 #+BEGIN_SRC emacs-lisp
 (use-package evil
+  :straight t
   :bind (:map evil-normal-state-map
               ("M-." . nil)
               ("M-," . nil))
@@ -634,7 +488,6 @@ can not leave behind.
 (use-package evil-ediff :after evil)
 
 (use-package evil-numbers
-  :straight t
   :commands (evil-numbers/inc-at-pt evil-numbers/dec-at-pt)
   :bind (("M-+" . evil-numbers/inc-at-pt)
          ("M--" . evil-numbers/dec-at-pt)))
@@ -655,52 +508,53 @@ visual-selection
 
 (use-package evil-commentary
   :after evil
+  :delight ""
   :config (evil-commentary-mode))
 #+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(use-package key-chord
-  :config (setq key-chord-two-keys-delay 0.05))
 
+#+BEGIN_SRC emacs-lisp
+(use-package expand-region
+  :straight t
+  :bind ("C-=" . er/expand-region))
+#+END_SRC
+
+Par-edit makes editing of s-expressions easier by keeping your
+parenthesis balanced and adding key-bindings for some structural
+modifications of code. It's mostly useful with lisps, but can also be
+handy elsewhere as well, so learn par-edit. It's time well spent.
+#+BEGIN_SRC emacs-lisp
+(use-package paredit
+  :delight ""
+  :hook ((lisp-mode
+          lisp-interaction-mode
+          emacs-lisp-mode
+          eval-expression-minibuffer-setup-mode) . paredit-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package evil-cleverparens
+  :after paredit
+  :hook ((lisp-mode
+          lisp-interaction-mode
+          emacs-lisp-mode
+          eval-expression-minibuffer-setup
+          cider-mode
+          cider-repl-mode) . evil-cleverparens-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
 (use-package use-package-chords
-  :after key-chord
-  :init (key-chord-mode 1))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package yasnippet
-  :diminish  yas-minor-mode
-  :config (yas/load-directory "~/.eyre/snippets")
-  :init (yas-global-mode t))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(use-package hideshow
-  :commands (hs-show-all hs-hide-all)
-  :diminish hideshow-mode
-  :config (setq hs-hide-comments-when-hiding-all nil)
-  :init (add-hook 'prog-mode-hook 'hs-minor-mode))
+  :init (key-chord-mode 1)
+  :config (setq key-chord-two-keys-delay 0.05))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package ac-emoji
-  :config 
-  (add-hook 'markdown-mode-hook 'ac-emoji-setup)
-  (add-hook 'git-commit-mode-hook 'ac-emoji-setup)
-  (set-fontset-font
-   t 'symbol
-   (font-spec :family "Apple Color Emoji") nil 'prepend)
-  :init
-  (ac-emoji-setup))
+  :hook ((markdown-mode git-commit-mode) . ac-emoji-setup)
+  :config (set-fontset-font t 'symbol (font-spec :family "Apple Color Emoji") nil 'prepend)
+  :init (ac-emoji-setup))
 #+END_SRC
   
-#+BEGIN_SRC emacs-lisp
-;(use-package chrome-emacsclient
-;  :load-path "~/.eyre/packages/chrome-emacsclient"
-;  :commands (chromeserv-find-file httpd/chromeserv/visit)
-;  :after simple-httpd)
-#+END_SRC
-
 #+BEGIN_SRC emacs-lisp
 (use-package multiple-cursors
   :commands (mc/mark-next-like-this mc/unmark-next-like-this mc/add-cursor-on-click)
@@ -723,32 +577,76 @@ visual-selection
 #+BEGIN_SRC emacs-lisp
 (use-package bool-flip
   :commands (bool-flip-do-flip)
-  :bind (("C-c b" . bool-flip-do-flip)))
+  :bind (:map evil-normal-state-map
+              ("-" . bool-flip-do-flip)))
 #+END_SRC
 
- 
-* Version Control
+#+BEGIN_SRC emacs-lisp
+(use-package hideshow
+  :hook (prog-mode . hs-minor-mode))
+#+END_SRC
+
+;; I'm a big proponent of ~org-mode~ and have found it's outlines to be
+;; one of it's most killer features. I've also discovered that you can
+;; have pretty good outlines without ~org-mode~, so ...
+;; 
+;; #+BEGIN_SRC emacs-lisp
+;; (use-package outline-mode
+;;   :straight nil
+;;   :hook prog-mode)
+;; 
+;; (use-package outorg
+;;   :straight t
+;;   :hook prog-mode
+;;   :config (setq outline-minor-mode-prefix "\M-#"))
+;; 
+;; (use-package outshine
+;;   :straight t
+;;   :after outline
+;;   :hook (outline-minor-mode . outshine-hook-function))
+;; 
+;; (use-package outline-ivy
+;;   :straight (outline-ivy :type git :host github :repo "hkjels/outline-ivy-mirror")
+;;   :commands (oi-jump))
+;; #+END_SRC
+
+** Templating
+
+#+BEGIN_SRC emacs-lisp
+(use-package yasnippet
+  :diminish  yas-minor-mode
+  :config (yas/load-directory "~/.eyre/snippets")
+  :init (yas-global-mode t))
+#+END_SRC
+
+** Version Control
   
 Without this property set to true, you would most likely jump of a
 cliff. It simply loads whatever changes that happens to files outside
 of emacs. Usually happens when you switch branch etc.
-  
 #+BEGIN_SRC emacs-lisp
 (global-auto-revert-mode t)
 (add-hook 'dired-mode-hook 'auto-revert-mode)
 #+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package git)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package gist)
+#+END_SRC
   
-Magit]] is pretty much the de-facto interface for git in Emacs and for
+Magit is pretty much the de-facto interface for git in Emacs and for
 good reasons. I've set it up so it suits my vim-mussles a little better.
 #+BEGIN_SRC emacs-lisp
 (use-package magit
   :commands (magit-blame-mode
              magit-diff-popup
              magit-log-popup
-             magit-statu)
+             magit-status)
   :config 
-  (setq magit-no-confirm '(discard revert stage-all-changes unstage-all-changes))
-  (general-define-key :prefix "SPC"))
+  (setq magit-no-confirm '(discard revert stage-all-changes unstage-all-changes)))
 
 (use-package magithub
   :after magit
@@ -763,819 +661,91 @@ fringe. It will also highlight changes in dired etc, so it's slightly
 more versatile than the more popular ~git-gutter~.
 #+BEGIN_SRC emacs-lisp
 (use-package diff-hl
-  :straight t
-  :config (global-diff-hl-mode t))
+  :init (global-diff-hl-mode t))
 #+END_SRC
-                                         
- 
-* Services
+
+** Language
 
 #+BEGIN_SRC emacs-lisp
-(use-package restclient
-  :commands (restclient-mode restclient-http-send-current restclient-copy-curl-command))
+(prefer-coding-system 'utf-8-unix)
+(set-language-environment 'utf-8)
+(set-selection-coding-system 'utf-8)
+(setq locale-coding-system 'utf-8
+      file-name-coding-system 'utf-8-unix
+      buffer-file-coding-system 'utf-8-unix)
+
+(setq tab-always-indent 'complete)
 #+END_SRC
-      
- 
-* Aesthetics
-  
-#+BEGIN_SRC emacs-lisp
-;; TODO Figure out why shackle doesn't work
-(use-package shackle
-  :straight t
-  :init
-  (setq hackle-default-alignment 'below
-        shackle-default-size 8
-        shackle-rules '(("^\\*eww" :regexp t :size 0.5 :select t :autokill t :noesc t)))
-  :config
-  (shackle-mode 1))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package golden-ratio
-  :disabled
-  :commands (golden-ratio golden-ratio-mode)
-  :diminish golden-ratio-mode
-  :config (add-hook 'post-command-hook 'golden-ratio)
-  :init (golden-ratio-mode 1))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(setq-default line-spacing 12
-              linum-relative-current-symbol ""
-              indent-tabs-mode nil)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(when window-system 
-  (blink-cursor-mode -1)
-  (scroll-bar-mode -1)
-  (tool-bar-mode -1))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(setq scroll-margin 10)
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(setq-default comment-column 60)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(setq visible-bell t)
-(setq auto-revert-verbose nil)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(setq x-stretch-cursor t)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package all-the-icons
-  :defer 1)
-
-(use-package dired-sidebar
-  :commands (dired-sidebar-toggle-sidebar)
-  :config (setq dired-sidebar-close-sidebar-on-file-open t))
-
-(use-package dired-subtree
-  :after dired-sidebar
-  :bind (:map dired-mode-map
-           ("i" . dired-subtree-toggle)))
-
-(use-package all-the-icons-dired
-  :after all-the-icons
-  :commands (all-the-icons-dired-mode)
-  :config (add-hook 'dired-mode-hook 'all-the-icons-dired-mode))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(use-package doom-themes
-  :init 
-  (load-theme 'doom-dracula :no-confirm))
-
-(use-package nord-theme :defer)
-
-(use-package flatui-theme :defer)
-
-(use-package flatui-dark-theme :defer)
-
-(use-package seti-theme :defer)
-
-(use-package sublime-themes :defer)
-
-(use-package material-theme
-  :defer
-  :config
-  (custom-theme-set-faces 'material
-      '(fringe ((t (:background "#181a26")))))
-  :init
-  ;; (load-theme 'material :no-confirm)
-  )
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package dimmer
-  :commands dimmer-mode
-  :config (setq dimmer-percent 0.4
-                dimmer-exclusion-regexp "^\*")
-  :init (dimmer-mode))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(add-to-list 'custom-theme-load-path "~/.emacs.d/themes")
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(global-set-key (kbd "<A-up>") 'shrink-window)
-(global-set-key (kbd "<A-down>") 'enlarge-window)
-(global-set-key (kbd "<A-left>") 'shrink-window-horizontally)
-(global-set-key (kbd "<A-right>") 'enlarge-window-horizontally)
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(global-hl-line-mode)
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(show-paren-mode t)
-(set-frame-font "Fira Code")
-
-(use-package spinner
-  :defer 1)
-
-(use-package beacon
-  :commands (beacon-mode)
-  :diminish (beacon-mode . "")
-  :config (beacon-mode t))
-
-(use-package anzu
-  :defer 1
-  :diminish anzu-mode
-  :config (global-anzu-mode t))
-
-(use-package fullframe
-  :commands magit-status
-  :config (fullframe magit-status magit-mode-quit-window))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(use-package linum-relative
-  :commands linum-relative-mode
-  :diminish linum-relative-mode
-  :init
-  (add-hook 'prog-mode-hook 'linum-relative-mode))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(use-package rainbow-delimiters
-  :commands rainbow-delimiters-mode
-  :diminish rainbow-delimiters-mode
-  :config (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package undo-tree
-  :defer 1
-  :diminish undo-tree-mode
-  :config (defalias 'redo 'undo-tree-redo)
-  :init (global-undo-tree-mode 1))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-(diminish 'undo-tree-mode)
-(diminish 'eldoc-mode)
-(diminish 'auto-fill-function (string 32 #xa7))
-(diminish 'auto-revert-mode)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package telephone-line
-  :after perspective
-  :config 
-  (progn
-    (set-face-foreground 'persp-selected-face "SteelBlue4")
-    (setq projectile-mode-line
-          '(:eval (if (file-remote-p default-directory)
-                      " P"
-                    (format " P[%s]" (projectile-project-name))))
-          telephone-line-lhs
-          '((evil   . (telephone-line-evil-tag-segment))
-            (accent . (telephone-line-vc-segment
-                       telephone-line-erc-modified-channels-segment
-                       telephone-line-process-segment))
-            (nil    . (telephone-line-minor-mode-segment
-                       telephone-line-buffer-segment))))
-    (setq telephone-line-rhs
-          '((nil . (telephone-line-misc-info-segment))
-            (evil . (telephone-line-major-mode-segment))))
-    (setq telephone-line-primary-right-separator 'telephone-line-abs-left
-          telephone-line-secondary-right-separator 'telephone-line-abs-hollow-left)
-    (setq telephone-line-height 24
-          telephone-line-evil-use-short-tag t))
-  :init
-  (telephone-line-evil-config))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package focus
-  :commands focus-mode)
-#+END_SRC
-                                                                                                                                                                                 
- 
- * Language Support
-
-#+BEGIN_SRC emacs-lisp
-(setq-default truncate-lines t)
-#+END_SRC
-
-Here's a list of languages that I would like to treat like lisp
-#+BEGIN_SRC emacs-lisp
-(setq lisp-modes '(clojure
-                   lisp
-                   list-interaction
-                   emacs-lisp))
-#+END_SRC
-  
+   
 Flycheck is an on the fly linter for a whole bunch of languages. For
 some languages it might cause some performance-issues, so be aware.
 #+BEGIN_SRC emacs-lisp
 (use-package flycheck
-  :straight t
-  :defer 1
-  :init (global-flycheck-mode))
+  :diminish flycheck-mode
+  :init (global-flycheck-mode)
+  :general
+  (:keymaps
+   'flycheck-mode-map
+   "M-j" #'flycheck-next-error
+   "M-k" #'flycheck-previous-error)
+  :general
+  (:states
+   'motion
+   :keymaps 'flycheck-error-list-mode-map
+   "j" #'flycheck-error-list-next-error
+   "k" #'flycheck-error-list-previous-error
+   "RET" #'flycheck-error-list-goto-error
+   "q" #'quit-window))
 
 (use-package flycheck-pos-tip
-  :straight t
-  :after (flycheck)
+  :after flycheck
   :init (flycheck-pos-tip-mode))
 
 (use-package flycheck-clojure
-  :straight t
   :after cider
   :config (flycheck-clojure-setup))
 #+END_SRC
-  
-Par-edit makes editing of s-expressions easier by keeping your
-parenthesis balanced and adding key-bindings for some structural
-modifications of code. It's mostly useful with lisps, but can also be
-handy elsewhere as well, so learn par-edit. It's time well spent.
-#+BEGIN_SRC emacs-lisp
-(use-package paredit
-  :commands paredit-mode
-  :diminish paredit-mode
-  :bind (("C-M-U" . paredit-forward-down))
-  :init (add-hook-to-modes lisp-modes 'paredit-mode))
-#+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package paxedit
-  :commands paxedit-mode
-  :diminish paxedit-mode
-  :bind (:map paxedit-mode-map
-              ("M-<right>" . paxedit-transpose-forward)
-              ("M-<left>" . paxedit-transpose-backward)
-              ("M-<up>" . paxedit-backward-up)
-              ("M-<down>" . paxedit-backward-end)
-              ("M-b" . paxedit-previous-symbol)
-              ("M-f" . paxedit-next-symbol)
-              ("C-%" . paxedit-copy)
-              ("C-&" . paxedit-kill)
-              ("C-*" . paxedit-delete)
-              ("C-^" . paxedit-sexp-raise)
-              ("C-w" . paxedit-backward-kill)
-              ("M-w" . paxedit-forward-kill)
-              ("M-u" . paxedit-symbol-change-case)
-              ("C-@" . paxedit-symbol-copy)
-              ("C-#" . paxedit-symbol-ki)))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
 (use-package company
-  :diminish company-mode
+  :delight ""
   :init (global-company-mode))
 
 (use-package company-quickhelp
+  :delight ""
   :after company
-  :init (add-hook 'global-company-mode-hook #'company-quickhelp-mode))
+  :hook (global-company-mode . company-quickhelp-mode))
 #+END_SRC
   
 #+BEGIN_SRC emacs-lisp
 (use-package flyspell
   :disabled
+  :after exec-path-from-shell
+  :delight ""
   :commands flyspell-mode
-  :diminish flyspell-mode
   :config (setq ispell-program-name "aspell"
                 ispell-extra-args '("--sug-mode=ultra"))
-  :init (progn
-          (add-hook 'text-mode-hook 'flyspell-mode)
-          (add-hook 'git-commit-mode-hook 'flyspell-mode)
-          (add-hook 'prog-mode-hook 'flyspell-prog-mode)))
-
-(use-package auto-dictionary
-  :disabled
-  :commands auto-dictionary-mode
-  :init (add-hook 'flyspell-mode-hook (lambda () (auto-dictionary-mode t))))
+  :hook ((text-mode git-commit-mode prog-mode-hook) . flyspell-prog-mode))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package auto-highlight-symbol
-  :straight t
-  :config  (mapc (lambda (mode)
-                (add-to-list 'ahs-modes mode))
-              '(clojure-mode clojurescript-mode cider-repl-mode))
-  :init (global-auto-highlight-symbol-mode t))
-#+END_SRC
-  
-#+BEGIN_SRC emacs-lisp
-  (defun use-symbols ()
-    "Translate some defined words into unicode symbols"
-    (setq prettify-symbols-alist
-	  '(("defn"       . ?ƒ)
-	    ("defn-"      . ?ʄ)
-	    ("#("         . (?ƒ (Br . Bl) ?())
-	     ("fn"         . ?ƒ)
-	     ("#{"         . (?∈ (Br . Bl) ?{))
-	     ("->"         . ?→)
-	     ("->>"        . ?⇒)
-	     ("partial"    . ?Ƥ)
-	     ("comp"       . ?∘)
-	     ("alpha"      . ?α)
-	     ("beta"       . ?β)
-	     ("delta"      . ?Δ)
-	     ;; ("delta-time" . '(?Δ (Br . Bl) ?T )
-	     ("pi"         . ?π)
-	     ("not="       . ?≠)
-	     (">="         . ?≥)
-	     ("<="         . ?≤)
-	     ("true"       . ?✓)
-	     ("false"      . ?✘))))
-#+END_SRC
-
-** Clojure
-
-#+BEGIN_SRC emacs-lisp
-(defun clojure-hook ()
-  (paredit-mode t)
-  (paxedit-mode t)
-  (eldoc-mode t)
-  (subword-mode t)
-  (rainbow-delimiters-mode t))
+(use-package powerthesaurus
+  :commands (powerthesaurus-lookup-word)
+  :bind (("C-x p" . powerthesaurus-lookup-word)))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(defun zprint ()
-  (interactive)
-  (let ((cmd (concat "lein zprint " buffer-file-name)))
-    (basic-save-buffer)
-    (shell-command cmd)))
+(use-package wordnut
+  :commands (wordnut-search wordnut-lookup-current-word)
+  :bind (("C-x /" . wordnut-search)))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package inf-clojure
-  :after clojure-mode
-  :init (inf-clojure-minor-mode))
-#+END_SRC
-   
-#+BEGIN_SRC emacs-lisp
-(defun cider-debug-create-local-let (start end)
-  (interactive "r")
-  (if cider--debug-mode-response
-      (nrepl-dbind-response cider--debug-mode-response (locals)
-        (let* ((code (buffer-substring-no-properties start end))
-               (bindings (apply #'append locals))
-               (formatted-bindings (mapconcat 'identity bindings " ")))
-          (kill-new (format "(let [%s]\n %s)" formatted-bindings code))
-          (message "copied let form to kill ring")))
-    (message "No debugging information found.")))
-
-(use-package cider
-  :after clojure-mode
-  :diminish cider-mode
-  :bind (:map cider-mode-map
-              ("C-c f" . zprint))
-  :config
-  (setq cider-auto-select-error-buffer t
-        cider-cljs-clojure-repl "clj -m cljs.main -Sdeps '{:deps {org.clojure/clojurescript {:mvn/version \"1.10.64\"}}}' -r"
-        cider-eldoc-display-context-dependent-info t
-        cider-font-lock-dynamically '(macro core function var partial comp -> ->>)
-        cider-overlays-use-font-lock t
-        cider-pprint-fn 'fipp
-        cider-repl-display-help-banner t
-        cider-repl-display-in-current-window t
-        cider-repl-history-file "~/.eyre/cider-history"
-        cider-repl-pop-to-buffer-on-connect nil
-        cider-repl-use-clojure-font-lock t
-        cider-repl-use-pretty-printing t
-        cider-repl-wrap-history t
-        cider-show-error-buffer t
-        nrepl-buffer-name-show-port nil
-        nrepl-hide-special-buffers t
-        nrepl-log-messages t
-        nrepl-prompt-to-kill-server-buffer-on-quit nil)
-  :init
-  (add-hook 'clojure-mode-hook 'use-symbols)
-  (add-hook 'cider-mode-hook #'clojure-hook)
-  (add-hook 'cider-repl-mode-hook #'clojure-hook)
-  (global-prettify-symbols-mode t))
+(use-package writegood-mode
+  :hook ((org-mode text-mode) . writegood-mode))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp
-(use-package re-jump
-   :straight (re-jump :type git :host github :repo "oliyh/re-jump.el"))
-#+END_SRC
- 
-#+BEGIN_SRC emacs-lisp
-(defun cider-format-before-save () 
-  (interactive)
-  (add-hook 'before-save-hook 'cider-format-buffer t t))
-
-(use-package clojure-mode
-  :defer 1
-  :commands (clojure-mode clojurescript-mode clojurec-mode)
-  :mode ("\\.edn$" "\\.boot$")
-  :config
-  (setq clojure-align-forms-automatically t
-        clojure-indent-style ':always-align
-        initial-scratch-message nil)
-  :init 
-  ;; Unfortunately, when using cider-format; point tends to move,
-  ;; which is super-annoying.
-  ;; (add-hook 'clojure-mode-hook 'cider-format-before-save)
-  (add-hook 'clojure-mode-hook 'cider-mode))
-
-(use-package sotclojure
-  :after clojure-mode)
-
-(use-package helm-cider
-  :after (helm cider)
-  :init (helm-cider-mode 1))
-#+END_SRC
-   
-#+BEGIN_SRC emacs-lisp
-(use-package clj-refactor
-  :after cider
-  :diminish clj-refactor-mode
-  :config (progn
-            (setq cljr-warn-on-eval nil
-                  cljr-magic-requires t
-                  cljr-favor-prefix-notation nil
-                  cljr-favor-private-functions nil
-                  cljr-auto-sort-ns t
-                  cljr-clojure-test-declaration "[clojure.test :refer :all]"
-                  cljr-magic-require-namespaces
-                  (append cljr-magic-require-namespaces
-                          '(("edn"       . "clojure.edn")
-                            ("spec"      . "clojure.spec")
-                            ("stest"     . "clojure.spec.test")
-                            ("str"       . "clojure.string"))))
-            (cljr-add-keybindings-with-prefix "C-c e")
-            (advice-add 'cljr-add-require-to-ns :after
-                        (lambda (&rest _)
-                          (yas-next-field)
-                          (yas-next-field))))
-  :init
-  (add-hook 'clojure-mode-hook 'clj-refactor-mode))
-#+END_SRC
-
-
-*** Snippets
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/separator
-# name: separator
-# key: -
-# --
-;; ${1:Heading} ${1:$(make-string (- 71 (string-width yas-text)) ?\-)}
-$0
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/c
-# name: comment
-# key: c
-# --
-(comment
-  $0)
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/wlet
-# name: wlet
-# key: wlet
-# --
-(when-let [$2 $1]
-  $3)$>
-  $0$>
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/ilet
-# name: ilet
-# key: ilet
-# --
-(if-let [$2 $1]
-  $3)$>
-  $0$>
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/cond
-# name: cond
-# key: cond
-# --
-(cond
-  ($1) $2
-  ($3) $4
-  :else $5)
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/try
-# name: try
-# key: try
-# --
-(try
-  $1$>
-  (catch ${2:Exception} e$>
-    $3$>))$>
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/go
-# name: timeout
-# key: timeout
-# --
-(go (<! (timeout $1))
-  ($0))
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-fx
-# name: reg-event-fx
-# key: fx
-# --
-(re-frame/reg-event-fx
-  ::$1
-  (fn [{:keys [db]} [k $2]]
-    $0))
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-db
-# name: reg-event-db
-# key: db
-# --
-(re-frame/reg-event-db
-  ::$1
-  (fn [db [k $2]]
-    $0))
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-sub
-# name: reg-sub
-# key: sub
-# --
-(re-frame/reg-sub
-  ::$1
-  (fn [db ${2:path}]
-    (get-in db $2))
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/log
-# name: util/log
-# key: l
-# --
-(util/log $0)
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/extract-keys
-# name: extract-keys
-# key: ek
-# --
-{:keys [${1:keys}]${2: :or {$3}}}
-#+END_SRC
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/defm
-# name: defmulti
-# key: defm
-# --
-(defmulti ${1:name} ${2:"${3:docstring?}" {:arglists '([$5])}}
-  (fn [${5:args}]
-    $6)
-  ${4::default ::default})
-
-${4:(defmethod $1 ::default [_] $7)}
-
-(defmethod $1 ${8:match}
-  [${9:args}]
-  $10)
-
-(defmethod $1 ${11:match}
-  [$9]
-  $0)
-#+END_SRC
-
-** Elm
-   
-#+BEGIN_SRC emacs-lisp
-(use-package elm-mode
-  :config (setq elm-format-on-save t))
-
-;(use-package flycheck-elm
-;  :after (elm-mode flycheck)
-;  :init (add-hook 'flycheck-mode-hook #'flycheck-elm-setup))
-#+END_SRC
-   
-** Org
-   
-#+BEGIN_SRC emacs-lisp :exports both
-(defun org-mode-defaults ()
-  (turn-on-auto-fill))
-  
-(use-package org
-  :hook
-  ((org-mode . org-sticky-header-mode)
-   (org-mode . org-bullets-mode)))
-
-(use-package org-plus-contrib
-  :disabled
-  :bind (("C-c c" . org-capture))
-  :config
-  (require 'ob-tangle)
-  (require 'ox-latex)
-  (use-package ob-clojurescript)
-  (load-library "find-lisp")
-  (add-to-list 'org-latex-packages-alist '("" "minted"))
-  (add-to-list 'org-latex-packages-alist '("" "listings"))
-  (add-to-list 'org-latex-packages-alist '("" "color"))
-  (add-to-list 'org-latex-packages-alist '("" "xcolor" t))
-  (setq org-adapt-indentation nil
-        org-agenda-files (find-lisp-find-files org-directory "\.org$")
-        org-agenda-start-with-follow-mode t
-        org-babel-clojure-backend 'cider
-        org-confirm-babel-evaluate nil
-        org-default-notes-file (concat org-directory "/Notes.org")
-        org-directory (expand-file-name "~/org")
-        org-ditaa-jar-path "/usr/local/bin/ditaa"
-        org-edit-src-content-indentation 0
-        org-ellipsis "•••"
-        org-export-with-smart-quotes t
-        org-hide-emphasis-markers t
-        org-latex-listings 'minted
-        org-latex-logfiles-extensions (quote ("lof" "lot" "tex~" "aux" "idx" "log" "out" "toc" "nav" "snm" "vrb" "dvi" "fdb_latexmk" "blg" "brf" "fls" "entoc" "ps" "spl" "bbl"))
-        org-latex-pdf-process '("xelatex -shell-escape -interaction nonstopmode %f" "xelatex -shell-escape -interaction nonstopmode %f")
-        org-src-fontify-natively t
-        org-src-preserve-indentation nil 
-        org-src-tab-acts-natively t
-        org-src-window-setup 'current-window)
-  (org-babel-do-load-languages
-   (quote org-babel-load-languages)
-   (quote ((emacs-lisp . t)
-           (dot . t)
-           (org . t)
-           (ditaa . t)
-           (clojure . t)
-           (css . t)
-           (haskell . t)
-           (shell . t)
-           (python . t)
-           (makefile . t))))
-  (add-hook 'org-mode-hook 'org-mode-defaults))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package ob-restclient
-  :after (org restclient)
-  :config
-  (org-babel-do-load-languages
-   (quote org-babel-load-languages)
-   (quote ((restclient . t)))))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package ledger-mode
-  :defer 1)
-#+END_SRC
-
-I use some languages from org-mode more than others and it's kind of
-tedious to write their full-name etc every time I want to blurb out
-some code, so here's a few handy shortcuts
-
-#+BEGIN_SRC emacs-lisp
-; Clojure-code
-(add-to-list 'org-structure-template-alist
-             (list "clj" "#+BEGIN_SRC clojure\n?\n#+END_SRC" "<src lang=\"clojure\">\n?\n</src>"))
-
-; Emacs-lisp-code
-(add-to-list 'org-structure-template-alist
-             (list "el" "#+BEGIN_SRC emacs-lisp\n?\n#+END_SRC" "<src lang=\"emacs-lisp\">\n?\n</src>"))
-
-; Haskell-code
-(add-to-list 'org-structure-template-alist
-             (list "hs" "#+BEGIN_SRC haskell\n?\n#+END_SRC" "<src lang=\"haskell\">\n?\n</src>"))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package org-sticky-header :after org)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package org-bullets
-  :after org
-  :config (setq org-bullets-bullet-list '("●")))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package org-src
-  :straight nil
-  :after org
-  :config
-  (setq org-edit-src-content-indentation 0
-        org-src-window-setup 'current-window))
-#+END_SRC
-
-I'd like to get started journaling everything that affects my
-well-being and progression. That means, I would like an entry for each
-day that summarizes all my flaws and achievements. It will also need a
-bit or two where I reflect upon it and possibly set a goal.
-
-#+BEGIN_SRC emacs-lisp
-(setq org-capture-templates
-      `(("a" "Automate" entry (file+datetree ,(expand-file-name (concat org-directory "/Automation.org"))) "* %^{prompt}\n\n%?")
-        ("j" "Jornal" entry (file+datetree ,(expand-file-name (concat org-directory "/Journal.org"))) "* %U %?\n%i\n")))
-#+END_SRC
-
-*** Snippets
-
-#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/org-mode/doc
-# name: doc
-# key: #+
-# --
-,#+TITLE:                $1
-${2:#+SUBTITLE:             $3}
-,#+AUTHOR:               `user-full-name`
-,#+EMAIL:                `user-mail-address`
-
-,#+LANGUAGE:             en
-
-,#+SEQ_TODO:             TODO(t) INPROGRESS(i) REVIEW(r@) | DONE(d) CANCELED(c@)
-,#+TAGS:                 noexport(n)
-,#+EXPORT_EXCLUDE_TAGS:  noexport
-,#+OPTIONS:              toc:4 h:4
-#+END_SRC
-
-** Web
-
-#+BEGIN_SRC emacs-lisp
-(use-package web-mode
-  :defer 1
-  :config (setq web-mode-markup-indent-offset 2
-                web-mode-css-indent-offset 2
-                web-mode-code-indent-offset 2
-                web-mode-enable-auto-closing t
-                web-mode-enable-auto-quoting t))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package emmet-mode
-  :straight t
-  :commands emmet-mode
-  :init (add-hook-to-modes '(sgml-mode-hook css-mode-hook) 'emmet-mode))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package js2-mode
-  :defer 1
-  :mode ("\\.js$'" . js2-mode)
-  :bind (:map js2-mode-map
-              ("{" . paredit-open-curly)
-              ("}" . paredit-close-curly-and-newline))
-  :init (custom-set-variables
-         '(js2-basic-offset 2)
-         '(js2-bounce-indent-p t)
-         '(tab-width 2)
-         '(indent-tabs-mode nil)
-         '(js2-highlight-level 3)))
-
-(use-package ac-js2
-  :after js2-mode
-  :init (progn
-          (add-hook 'js-mode-hook 'js2-minor-mode)
-          (add-hook 'js2-mode-hook 'ac-js2-mode)))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package prettier-js
-  :defer 1
-  :init (add-hook 'js2-mode-hook 'prettier-js-mode))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(use-package company-tern
-  :defer 1
-  :config (add-to-list 'company-backends 'company-tern))
-#+END_SRC
-
-** Markdown
-
-#+BEGIN_SRC emacs-lisp
-(use-package markdown-mode
-  :commands (markdown-mode))
-#+END_SRC
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
- 
-* Abbreviations
+*** Abbreviations
 
 #+NAME: abbrev-table
 | Abbreviation      | Full specimen |
@@ -1629,42 +799,665 @@ ${2:#+SUBTITLE:             $3}
 | shrug             | ¯\_(ツ)_/¯    |
 
 #+BEGIN_SRC emacs-lisp :var abbrev-table=abbrev-table
-(let* ((dyn `(("@name" ,user-full-name)
-              ("@mail" ,user-mail-address)))
-       (abbreviations (append dyn abbrev-table)))
-  (define-abbrev-table 'global-abbrev-table abbreviations))
+;; (let* ((dyn `(("@name" ,user-full-name)
+;;               ("@mail" ,user-mail-address)))
+;;        (abbreviations (append dyn abbrev-table)))
+;;   (define-abbrev-table 'global-abbrev-table abbreviations))
+#+END_SRC
+
+*** Emacs lisp
+
+With [[https://github.com/Malabarba/names][names]] you can write emacs-packages with complete namespaces
+using ~(define-namespace package-)~
+#+BEGIN_SRC emacs-lisp
+(use-package names
+  :straight t)
+#+END_SRC
+
+[[https://github.com/Malabarba/Nameless][Nameless]] hides package namespaces for brevity
+#+BEGIN_SRC emacs-lisp
+(use-package nameless
+  :straight t
+  :commands (nameless-mode)
+  :hook (emacs-lisp-mode . nameless-mode))
+#+END_SRC
+
+*** Org
+    
+Unfortunately, straight is not able to install org-mode properly at
+the time of writing, so we have to apply a hack.
+#+BEGIN_SRC emacs-lisp
+(use-package org
+  :init
+  (defun org-git-version ()
+    (require 'git)
+    (let ((git-repo (expand-file-name "straight/repos/org/" user-emacs-directory)))
+      (string-trim (git-run "describe" "--match=release\*" "--abbrev=6" "HEAD"))))
+
+  (defun org-release ()
+    (require 'git)
+    (let ((git-repo (expand-file-name "straight/repos/org/" user-emacs-directory)))
+      (string-trim
+       (string-remove-prefix "release_" (git-run "describe" "--match=release\*" "--abbrev=0" "HEAD")))))
+
+  (provide 'org-version)
+  :config
+  (org-babel-do-load-languages
+   (quote org-babel-load-languages)
+   (quote ((clojure . t)
+           (ditaa . t)
+           (dot . t)
+           (emacs-lisp . t)
+           (haskell . t)
+           (makefile . t)
+           (sed . t)
+           (shell . t))))
+  (setq org-directory "~/org"
+        org-export-in-background t
+        org-insert-heading-respect-content t))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-sticky-header 
+  :after org
+  :hook (org-mode . org-sticky-header-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-bullets
+  :disabled
+  :after org
+  :hook (org-mode . org-bullets-mode)
+  :config (setq org-bullets-bullet-list '("●")))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-src
+  :straight nil
+  :after org
+  :config
+  (setq org-edit-src-content-indentation 0
+        org-src-fontify-natively t
+        org-src-window-setup 'current-window))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package org-agenda
+  :straight org)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+; Clojure-code
+(add-to-list 'org-structure-template-alist
+             (list "clj" "#+BEGIN_SRC clojure\n?\n#+END_SRC" "<src lang=\"clojure\">\n?\n</src>"))
+
+; Emacs-lisp-code
+(add-to-list 'org-structure-template-alist
+             (list "el" "#+BEGIN_SRC emacs-lisp\n?\n#+END_SRC" "<src lang=\"emacs-lisp\">\n?\n</src>"))
+
+; Haskell-code
+(add-to-list 'org-structure-template-alist
+             (list "hs" "#+BEGIN_SRC haskell\n?\n#+END_SRC" "<src lang=\"haskell\">\n?\n</src>"))
+#+END_SRC
+
+*** Docker
+#+BEGIN_SRC emacs-lisp
+(use-package dockerfile-mode)
+#+END_SRC
+
+*** Git
+#+BEGIN_SRC emacs-lisp
+(use-package gitignore-mode)
+(use-package gitconfig-mode)
+#+END_SRC
+
+*** Terraform
+#+BEGIN_SRC emacs-lisp
+(use-package terraform-mode)
+#+END_SRC
+*** Clojure
+
+#+BEGIN_SRC emacs-lisp
+(use-package clojure-mode
+  :straight t
+  :config (setq clojure-align-forms-automatically t
+                clojure-indent-style ':always-align
+                initial-scratch-message nil))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package cider
+  :straight t
+  :after clojure-mode
+  :hook ((cider-mode cider-repl-mode) . paredit-mode))
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/separator
+# name: separator
+# key: -
+# --
+;; ${1:Heading} ${1:$(make-string (- 71 (string-width yas-text)) ?\-)}
+$0
+#+END_SRC
+
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/c
+# name: comment
+# key: c
+# --
+(comment
+$0)
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/wlet
+# name: wlet
+# key: wlet
+# --
+(when-let [$2 $1]
+$3)$>
+$0$>
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/ilet
+# name: ilet
+# key: ilet
+# --
+(if-let [$2 $1]
+$3)$>
+$0$>
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/cond
+# name: cond
+# key: cond
+# --
+(cond
+($1) $2
+($3) $4
+:else $5)
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/try
+# name: try
+# key: try
+# --
+(try
+$1$>
+(catch ${2:Exception} e$>
+$3$>))$>
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/go
+# name: timeout
+# key: timeout
+# --
+(go (<! (timeout $1))
+($0))
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-fx
+# name: reg-event-fx
+# key: fx
+# --
+(re-frame/reg-event-fx
+::$1
+(fn [{:keys [db]} [k $2]]
+$0))
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-event-db
+# name: reg-event-db
+# key: db
+# --
+(re-frame/reg-event-db
+::$1
+(fn [db [k $2]]
+$0))
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/reg-sub
+# name: reg-sub
+# key: sub
+# --
+(re-frame/reg-sub
+::$1
+(fn [db ${2:path}]
+(get-in db $2)))
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/log
+# name: util/log
+# key: l
+# --
+(util/log $0)
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/extract-keys
+# name: extract-keys
+# key: ek
+# --
+{:keys [${1:keys}]${2: :or {$3}}}
+#+END_SRC
+
+#+BEGIN_SRC snippet :tangle ~/.eyre/snippets/clojure-mode/defm
+# name: defmulti
+# key: defm
+# --
+(defmulti ${1:name} ${2:"${3:docstring?}" {:arglists '([$5])}}
+(fn [${5:args}]
+$6)
+${4::default ::default})
+
+${4:(defmethod $1 ::default [_] $7)}
+
+(defmethod $1 ${8:match}
+[${9:args}]
+$10)
+
+(defmethod $1 ${11:match}
+[$9]
+$0)
+#+END_SRC
+
+
+* Aesthetics
+
+The chrome for Emacs-GUI could definitely be improved and arguably is,
+by just turning it off. I like it.
+#+BEGIN_SRC emacs-lisp
+(when window-system 
+  (blink-cursor-mode -1)
+  (scroll-bar-mode -1)
+  (tool-bar-mode -1)
+  (fringe-mode '(3 . 1)))
 #+END_SRC
  
+I've noticed some call these kinds of preferences "better defaults"
+however, mine are not the same as everyone elses, so it might just be
+better for me. SRY!
+#+BEGIN_SRC emacs-lisp
+(setq-default line-spacing 15             ;; Adds some more space between lines
+              truncate-lines t            ;; Disables line-wrapping
+              indent-tabs-mode nil        ;; Use spaces for indentation
+              scroll-margin 10            ;; Add some space when scrolling
+              comment-column 60           ;; Hard-wrap comments at 60 columns
+              visible-bell t              ;; Disables audio-bell
+              ring-bell-function 'ignore  ;; Disables the a big yellow triangle
+              x-stretch-cursor t          ;; Make the cursor span the entire with of the character below
+              auto-revert-verbose nil)    ;; Disable messages about reverting buffers
 
-* Box-specific Preferences
+(global-hl-line-mode)
+(show-paren-mode t)
+(set-frame-font "Fira Code")
+#+END_SRC
 
-** MacOS defaults
+#+BEGIN_SRC emacs-lisp
+(use-package sublimity
+  :straight t
+  :init (require 'sublimity-attractive)
+  :config (sublimity-mode 1))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package all-the-icons
+  :straight t)
+
+(use-package all-the-icons-dired
+  :after all-the-icons
+  :commands (all-the-icons-dired-mode)
+  :hook (dired-mode . all-the-icons-dired-mode))
+
+(use-package all-the-icons-ivy
+  :after (all-the-icons ivy)
+  :config 
+  (all-the-icons-ivy-setup)
+  (setq all-the-icons-ivy-file-commands
+        '(counsel-find-file counsel-file-jump counsel-recentf counsel-projectile-find-file counsel-projectile-find-dir)))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package aggressive-indent
+  :straight t
+  :hook ((emacs-lisp-mode clojure-mode) . aggressive-indent-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package dired-sidebar
+  :commands (dired-sidebar-toggle-sidebar)
+  :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
+  :config (setq dired-sidebar-close-sidebar-on-file-open t))
+
+(use-package dired-subtree
+  :after dired-sidebar
+  :bind (:map dired-mode-map
+              ("i" . dired-subtree-toggle)))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package dracula-theme
+  :straight t)
+
+(use-package nord-theme
+  :straight t
+  :init (load-theme 'nord :no-confirm))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package dimmer
+  :commands dimmer-mode
+  :config (setq dimmer-percent 0.4
+                dimmer-exclusion-regexp "^\*")
+  :init (dimmer-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package spinner)
+
+(use-package beacon
+  :commands (beacon-mode)
+  :delight ""
+  :config (beacon-mode t))
+
+(use-package anzu
+  :delight ""
+  :config (global-anzu-mode t))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package undo-tree
+  :delight ""
+  :init (global-undo-tree-mode 1)
+  :config
+  (general-define-key
+   :states 'motion
+   :keymaps '(undo-tree-visualizer-mode-map
+              undo-tree-visualizer-selection-mode-map)
+   "j" 'undo-tree-visualize-redo
+   "k" 'undo-tree-visualize-undo
+   "h" 'undo-tree-visualize-switch-branch-right
+   "l" 'undo-tree-visualize-switch-branch-left)
+  (setq undo-tree-visualizer-timestamps t)
+  (setq undo-tree-visualizer-diff t))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package focus
+  :commands focus-mode)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package linum-relative
+  :commands linum-relative-mode
+  :delight ""
+  :hook (prog-mode . linum-relative-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package rainbow-delimiters
+  :delight ""
+  :commands rainbow-delimiters-mode
+  :hook (prog-mode . rainbow-delimiters-mode))
+#+END_SRC
+ 
+#+BEGIN_SRC emacs-lisp
+(use-package rainbow-mode
+  :commands rainbow-mode
+  :hook (prog-mode . rainbow-mode))
+#+END_SRC
+  
+#+BEGIN_SRC emacs-lisp
+(use-package shackle
+  :config
+  (add-hook 'eshell-exit-hook 'delete-window)
+  (setq shackle-rules
+        '(("^magit: .*" :regexp t :same t)
+          (magit-diff-mode :noselect t)
+          ("\\`\\*e?shell" :regexp t :align below :size 0.35 :popup t)
+          ("\\`\\*B?enchmark Init" :regexp t :align below :size 0.35 :popup t)
+          ("*WordNut*" :align below :size 0.35 :popup t)
+          ("*undo-tree*" :size 0.3 :align right)
+          ("*Help*" :align right))
+        shackle-default-rule '(:select t))
+  (shackle-mode 1))
+#+END_SRC
+                                                                                                                                                                                 
+** Modeline
+
+#+BEGIN_SRC emacs-lisp
+(defconst modeline:blank " ")
+(defconst modeline:blank2 (concat modeline:blank modeline:blank))
+(defconst modeline:blank4 (concat modeline:blank2 modeline:blank2))
+(defconst modeline:separator (propertize "»"))
+(defconst modeline:separator-group (concat modeline:blank2 modeline:separator modeline:blank2))
+
+(defconst modeline:symbol-directory-local
+  (propertize
+   (all-the-icons-octicon "dash")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-directory-remote
+  (propertize
+   (all-the-icons-octicon "sync")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-status
+  (propertize
+   (all-the-icons-octicon "info")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-up-to-date
+  (propertize
+   (all-the-icons-octicon "check")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-edited
+  (propertize
+   (all-the-icons-octicon "keyboard")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-needs-added
+  (propertize
+   (all-the-icons-octicon "pencil")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-needs-removed
+  (propertize
+   (all-the-icons-octicon "pencil")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-needs-conflict
+  (propertize
+   (all-the-icons-octicon "pencil")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-unergistered
+  (propertize
+   (all-the-icons-octicon "pencil")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-vc-branch
+  (propertize
+   (all-the-icons-octicon "git-branch")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-flycheck-no-issues
+  (propertize
+   (all-the-icons-octicon "check")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-flycheck-issues
+  (propertize
+   (all-the-icons-octicon "bug")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-flycheck-running
+  (propertize
+   (all-the-icons-octicon "sync")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-flycheck-errored
+  (propertize
+   (all-the-icons-octicon "alert")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-flycheck-interrupted
+  (propertize
+   (all-the-icons-octicon "alert")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-buffer-modified
+  (propertize
+   (all-the-icons-octicon "quote")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defconst modeline:symbol-buffer-locked
+  (propertize
+   (all-the-icons-octicon "lock")
+   'face `(:family ,(all-the-icons-octicon-family))
+   'display '(raise 0.10)))
+
+(defun modeline:buffer-modified ()
+  (let ((indicator (format-mode-line "%*")))
+    (cond ((string= indicator "-") modeline:symbol-buffer-saved)
+          ((string= indicator "*") modeline:symbol-buffer-modified)
+          ((string= indicator "%") modeline:symbol-buffer-locked))))
+
+(defun modeline:remote ()
+  (let ((indicator (format-mode-line "%@")))
+    (cond ((string= indicator "-") modeline:symbol-directory-local)
+          ((string= indicator "@") modeline:symbol-directory-remote))))
+
+(defun modeline:vc-enabled ()
+  (and
+   (not (null (buffer-file-name)))
+   (not (null (vc-state buffer-file-name)))))
+
+(defun modeline:vc ()
+  (let* ((branch
+          (mapconcat 'concat (cdr (split-string vc-mode "[:-]")) "-"))
+         (status
+          (vc-state buffer-file-name))
+         (status-icon
+          (cond
+           ((eq status 'edited) modeline:symbol-vc-edited)
+           ((eq status 'up-to-date) modeline:symbol-vc-up-to-date)
+           (t modeline:symbol-vc-status)))
+         (status-name
+          (symbol-name status)))
+    (concat
+     ;; status-icon modeline:blank status-name modeline:blank
+     modeline:symbol-vc-branch modeline:blank branch)))
+
+(defun modeline:flycheck-enabled ()
+  (not
+   (member flycheck-last-status-change
+           '(no-checker not-checked suspicious))))
+
+(defun modeline:flycheck ()
+  (let* ((flycheck-errors (flycheck-count-errors flycheck-current-errors))
+         (num-issues
+          (let-alist flycheck-errors
+            (+ (or .warning 0) (or .error 0))))
+         (num-errors (or (cdr (assoc 'error flycheck-errors)) 0))
+         (num-warnings (or (cdr (assoc 'warning flycheck-errors)) 0))
+         (status flycheck-last-status-change)
+         (status-icon
+          (cond
+           ((and
+             (eq status 'finished) (= num-issues 0))
+            modeline:symbol-flycheck-no-issues)
+           ((and
+             (eq status 'finished) (> num-issues 0))
+            modeline:symbol-flycheck-issues)
+           ((eq status 'running) modeline:symbol-flycheck-running)
+           ((eq status 'errored) modeline:symbol-flycheck-errored)
+           ((eq status 'interrupted) modeline:symbol-flycheck-interrupted)))
+         (status-message
+          (cond
+           ((and (eq status 'finished) (= num-issues 0)) "no issues")
+           ((and (eq status 'finished) (> num-issues 0))
+            (concat
+             (propertize (format "%d" num-errors) 'face 'bold)
+             " errors "
+             (propertize (format "%d" num-warnings) 'face 'bold)
+             " warnings"))
+           ((eq status 'running) "running")
+           ((eq status 'errored) "error")
+           ((eq status 'interrupted) "interrupted"))))
+    (concat status-icon modeline:blank status-message)))
+
+(defun modeline:major-mode ()
+  (downcase mode-name))
+
+(let ((bg (face-attribute 'default :background)))
+  (custom-set-faces
+   `(mode-line ((t (:box (:line-width 1 :color ,bg)))))))
+
+(set-default 'mode-line-format
+             (list
+              modeline:blank2
+              '(:eval (when (modeline:flycheck-enabled) (concat (modeline:flycheck) modeline:blank2)))
+              ;; modeline:buffer-modified
+              ;; modeline:remote
+              mode-line-buffer-identification
+              modeline:separator-group
+              mode-line-modes
+              modeline:separator-group
+              '(:eval (when (modeline:vc-enabled) (modeline:vc)))))
+#+END_SRC
+
+
+* Box-Specific Preferences
+
+** MacOS Defaults
 
 #+BEGIN_SRC emacs-lisp
 (use-package emacs
   :straight nil
   :when (eq system-type 'darwin)
-  :config
-  (setq ns-command-modifier 'meta
-        ns-option-modifier 'super
-        ns-right-option-modifier nil))  
+  :init 
+  (setq mac-option-key-is-meta nil
+        mac-command-key-is-meta t
+        mac-command-modifier 'meta
+        mac-option-modifier nil))
+
+(use-package exec-path-from-shell
+  :straight t
+  :if (eq system-type 'darwin)
+  :commands exec-path-from-shell-initialize
+  :init (exec-path-from-shell-initialize))
 #+END_SRC
 
 ** Addition Local Configuration
 
- So Eyre does not have the layered goodness of Spacemacs and other
- similar run-commands, but you can override and add your own shit as
- long as you keep it locally. Touch a file at ~~/.eyre.local~ and
- sprinkle it with some magical elisp-dust and you should be all set.
- #+BEGIN_SRC emacs-lisp
- (let ((path (expand-file-name "~/.eyre.local")))
-   (when (file-exists-p path)
-     (load-file path)))
- #+END_SRC
-           
- 
-* Notes of Improvement
+So Eyre does not have the layered goodness of Spacemacs and other
+similar run-commands, but you can override and add your own shit as
+long as you keep it locally. Touch a file at ~~/.eyre.local~ and
+sprinkle it with some magical elisp-dust and you should be all set.
+#+BEGIN_SRC emacs-lisp
+(let ((path (expand-file-name "~/.eyre.local")))
+  (when (file-exists-p path)
+    (load-file path)))
+#+END_SRC
 
-** TODO Make fancy-symbols compatible with formatters
-** TODO When reloading Eyre, perspectives should be conserved
-** TODO Automatically open browser when connecting to a browser-REPL    
+
+* Notes of Improvement
+** TODO Hydrated Bindings for most used Modes
+** TODO Emacs-holylight
+** TODO Automatically start repl from dirlocals

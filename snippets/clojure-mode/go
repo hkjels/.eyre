@@ -1,5 +1,0 @@
-# name: timeout
-# key: timeout
-# --
-(go (<! (timeout $1))
-  ($0))

@@ -1,4 +1,0 @@
-# name: util/log
-# key: l
-# --
-(util/log $0)

@@ -1,7 +1,0 @@
-# name: reg-event-fx
-# key: fx
-# --
-(re-frame/reg-event-fx
-  ::$1
-  (fn [{:keys [db]} [k $2]]
-    $0))

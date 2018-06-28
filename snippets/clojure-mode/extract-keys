@@ -1,4 +1,0 @@
-# name: extract-keys
-# key: ek
-# --
-{:keys [${1:keys}]${2: :or {$3}}}
