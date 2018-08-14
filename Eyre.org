@@ -528,18 +528,16 @@ handy elsewhere as well, so learn par-edit. It's time well spent.
   :hook ((lisp-mode
           lisp-interaction-mode
           emacs-lisp-mode
-          eval-expression-minibuffer-setup-mode) . paredit-mode))
+          eval-expression-minibuffer-setup-mode
+          clojure-mode
+          cider-mode
+          cider-repl-mode) . paredit-mode))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package evil-cleverparens
   :after paredit
-  :hook ((lisp-mode
-          lisp-interaction-mode
-          emacs-lisp-mode
-          eval-expression-minibuffer-setup
-          cider-mode
-          cider-repl-mode) . evil-cleverparens-mode))
+  :hook (paredit-mode . evil-cleverparens-mode))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -1058,7 +1056,18 @@ $10)
 [$9]
 $0)
 #+END_SRC
+*** Web
 
+#+BEGIN_SRC emacs-lisp
+(use-package web-mode
+  :config (setq web-mode-enable-auto-closing t))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package emmet-mode
+  :hook ((sgml-mode css-mode) . emmet-mode)
+  :config (setq emmet-self-closing-tag-style ""))
+#+END_SRC
 
 * Aesthetics
 
@@ -1071,7 +1080,19 @@ by just turning it off. I like it.
   (tool-bar-mode -1)
   (fringe-mode '(3 . 1)))
 #+END_SRC
- 
+
+Make the titlebar the same color as the background.
+#+BEGIN_SRC emacs-lisp
+(use-package emacs
+  :ensure nil
+  :when (version<= emacs-version "26.1")
+  :config
+  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+  (add-to-list 'default-frame-alist '(ns-appearance . dark))
+  (setq ns-use-proxy-icon  nil
+        frame-title-format nil))
+#+END_SRC
+
 I've noticed some call these kinds of preferences "better defaults"
 however, mine are not the same as everyone elses, so it might just be
 better for me. SRY!
@@ -1092,10 +1113,10 @@ better for me. SRY!
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
-(use-package sublimity
-  :straight t
-  :init (require 'sublimity-attractive)
-  :config (sublimity-mode 1))
+;; (use-package sublimity
+;;   :straight t
+;;   :init (require 'sublimity-attractive)
+;;   :config (sublimity-mode 1))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
